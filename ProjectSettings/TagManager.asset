@@ -41,3 +41,9 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: OutlineCell
+    uniqueID: 3727413075
+    locked: 0
+  - name: TextCell
+    uniqueID: 1275423945
+    locked: 0
