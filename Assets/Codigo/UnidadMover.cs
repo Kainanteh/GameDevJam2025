@@ -7,21 +7,18 @@ public class UnidadMover : MonoBehaviour
     private float t = 0f;
 
     private HeadquartersBuilding origen;
-    private Building destino;
 
     private int coste = -1;
 
-    public void Init(HeadquartersBuilding origen, Building destino, Vector3 start, Vector3 end, int coste)
+    public void Init(HeadquartersBuilding origen, Vector3 start, Vector3 end, int coste)
     {
         this.origen = origen;
-        this.destino = destino;
         this.start = start;
         this.end = end;
         this.coste = coste;
 
         MostrarTexto();
     }
-
 
     void Update()
     {
@@ -44,21 +41,14 @@ public class UnidadMover : MonoBehaviour
 
         if (t >= 1f)
         {
-            if (destino is HeadquartersBuilding hqDestino)
-                hqDestino.soldierCount = Mathf.Max(0, hqDestino.soldierCount - 1);
-
             Destroy(gameObject);
         }
     }
-
 
     void MostrarTexto()
     {
         var label = GetComponentInChildren<TMPro.TextMeshProUGUI>();
         if (label != null)
-        {
             label.text = coste.ToString();
-        }
     }
-
 }

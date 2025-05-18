@@ -12,8 +12,7 @@ public class HeadquartersBuilding : Building
 
     private float generationTimer = 0f;
 
-    private List<(Vector3 origen, Vector3 destino, Building target, bool isRecolectar)> activePaths = new();
-
+    private List<(Vector3 origen, Vector3 destino, Building target, bool isRecolectar, bool isAtaque, List<Vector3> camino, int daño)> activePaths = new();
 
     private TextMeshPro debugLabel;
 
@@ -22,21 +21,18 @@ public class HeadquartersBuilding : Building
         this.ownerId = ownerId;
     }
 
-
-
-    private void LaunchRecolector(Vector3 origen)
+    private void LaunchRecolector(Vector3 origen, CellData celdaRecurso, List<Vector3> camino)
     {
-        // Obtener la celda de recurso directamente (fija o elegida)
-        CellData celdaRecurso = GameManager.Instance.gridGenerator.GetCellAt(1, 7); // Recurso en (1,7)
-
-        // Usar la posición exacta de la celda como destino
-        Vector3 destino = celdaRecurso.transform.position;
-
-        // Instanciar unidad y pasar toda la info necesaria
         GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origen, Quaternion.identity);
         unidad.name = "Recolector";
+        unidad.AddComponent<UnidadRecolector>().InitConCamino(this, camino, celdaRecurso);
+    }
 
-        unidad.AddComponent<UnidadRecolector>().Init(this, origen, destino, celdaRecurso);
+    private void LaunchSoldado(Vector3 origen, List<Vector3> camino, Building objetivo, int daño)
+    {
+        GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origen, Quaternion.identity);
+        unidad.name = "Soldado";
+        unidad.AddComponent<UnidadSoldado>().Init(this, camino, objetivo, daño);
     }
 
     public void Tick(float deltaTime)
@@ -49,7 +45,6 @@ public class HeadquartersBuilding : Building
 
             int usable = generationRate;
 
-            // ✅ Enviar soldados por caminos activos (ataques)
             for (int i = 0; i < activePaths.Count && usable > 0;)
             {
                 var path = activePaths[i];
@@ -64,32 +59,38 @@ public class HeadquartersBuilding : Building
                     }
 
                     soldierCount--;
-                    LaunchRecolector(path.origen);
+                    LaunchRecolector(path.origen, GameManager.Instance.gridGenerator.GetCellAt(1, 7), path.camino);
                     activePaths.RemoveAt(i);
                     UpdateLabel();
-                    continue;
+                    usable--;
+                }
+                else if (path.isAtaque)
+                {
+                    if (soldierCount <= 0)
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    LaunchSoldado(path.origen, path.camino, path.target, path.daño);
+                    usable--;
+                    i++;
                 }
                 else
                 {
-                    LaunchUnidad(path.origen, path.destino, path.target);
-                    usable--; // consume generación
-                    i++;
+                    activePaths.RemoveAt(i);
                 }
             }
 
-            // ✅ Sumar soldados si hay generación sobrante y no estamos en el máximo
             if (usable > 0 && soldierCount < maxSoldiers)
             {
                 soldierCount += usable;
                 soldierCount = Mathf.Min(soldierCount, maxSoldiers);
             }
 
-            // ✅ Si estamos al máximo y sobró generación → ignoramos pero seguimos tickeando
             UpdateLabel();
         }
     }
-
-
 
     public void OnRecolectorSuccess()
     {
@@ -97,44 +98,14 @@ public class HeadquartersBuilding : Building
         Debug.Log($"Nueva generación del cuartel: {generationRate}");
     }
 
-
-    public void RegisterActivePath(Vector3 origenVisual, Vector3 destino, Building target, bool isRecolectar)
+    public void RegisterActiveRecolector(Vector3 origen, List<Vector3> camino, CellData celdaRecurso)
     {
-        activePaths.Add((origenVisual, destino, target, isRecolectar));
+        activePaths.Add((origen, camino[camino.Count - 1], null, true, false, camino, 0));
     }
 
-
-    public void UnregisterActivePath(Vector3 destino)
+    public void RegisterActiveSoldado(Vector3 origen, List<Vector3> camino, Building hqObjetivo, int daño)
     {
-        activePaths.RemoveAll(p => Vector3.Distance(p.destino, destino) < 0.1f);
-    }
-
-    private void LaunchUnidad(Vector3 origen, Vector3 destino, Building target)
-    {
-        GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origen, Quaternion.identity);
-        unidad.name = "Unidad";
-
-        int coste = -1;
-
-        UnidadMover mover = unidad.AddComponent<UnidadMover>();
-        mover.Init(this, target, origen, destino, coste);
-    }
-
-
-
-
-    private Vector3 GetCenter()
-    {
-        Vector3 center = Vector3.zero;
-        foreach (var cell in occupiedCells)
-            center += cell.transform.position;
-
-        return center / occupiedCells.Count;
-    }
-
-    public void UnidadReachedTarget(Vector3 destino)
-    {
-        UnregisterActivePath(destino);
+        activePaths.Add((origen, camino[camino.Count - 1], hqObjetivo, false, true, camino, daño));
     }
 
     public void UpdateLabel()
@@ -167,59 +138,27 @@ public class HeadquartersBuilding : Building
         debugLabel = text;
     }
 
-
-    public void RegistrarCaminoPorTipo(Vector3 origenVisual, Vector3 destino, Building target, TipoCamino tipo, CellData celdaDestino = null)
+    private Vector3 GetCenter()
     {
-        if (tipo == TipoCamino.Recolectar)
-        {
-            if (soldierCount <= 0)
-            {
-                Debug.LogWarning("❌ No hay soldados disponibles para recolectar.");
-                return;
-            }
+        Vector3 center = Vector3.zero;
+        foreach (var cell in occupiedCells)
+            center += cell.transform.position;
 
-            soldierCount--;
-            UpdateLabel();
-
-            LaunchRecolector(origenVisual);
-            return;
-        }
-
-        if (tipo == TipoCamino.Ataque)
-        {
-            if (soldierCount <= 0)
-            {
-                Debug.LogWarning("❌ No hay soldados disponibles para atacar.");
-                return;
-            }
-
-            soldierCount--;
-            UpdateLabel();
-
-            activePaths.Add((origenVisual, destino, target, false));
-            return;
-        }
-
-        if (tipo == TipoCamino.Exploracion)
-        {
-            if (soldierCount <= 0)
-            {
-                Debug.LogWarning("❌ No hay soldados disponibles para explorar.");
-                return;
-            }
-
-            soldierCount--;
-            UpdateLabel();
-
-            GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origenVisual, Quaternion.identity);
-            unidad.name = "Explorador";
-
-            var comp = unidad.AddComponent<UnidadExplorador>();
-            comp.Init(this, origenVisual, destino, celdaDestino, 1);
-            return;
-        }
+        return center / occupiedCells.Count;
     }
 
+    public void UnidadReachedTarget(Vector3 destino)
+    {
+        activePaths.RemoveAll(p => Vector3.Distance(p.destino, destino) < 0.1f);
+    }
+
+    public void RecibirDaño(int daño)
+    {
+        soldierCount -= daño;
+        if (soldierCount < 0) soldierCount = 0;
+        UpdateLabel();
+        Debug.Log($"💥 HQ {buildingName} recibe {daño} de daño");
+    }
 
 
 }

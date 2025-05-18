@@ -7,14 +7,12 @@ public class UnidadRecolector : MonoBehaviour
     private HeadquartersBuilding origenHQ;
     private List<Vector3> camino = new List<Vector3>();
     private int index = 0;
-    private bool yendo = true;
     private float speed = 2f;
 
     private bool yaSumado = false;
     private CellData celdaRecurso;
     private TMPro.TextMeshProUGUI label;
 
-    // ✅ Init clásico: directo origen → recurso
     public void Init(HeadquartersBuilding origenHQ, Vector3 origen, Vector3 destino, CellData celdaRecurso)
     {
         this.origenHQ = origenHQ;
@@ -30,23 +28,17 @@ public class UnidadRecolector : MonoBehaviour
         StartCoroutine(RutinaCicloRecolector());
     }
 
-    // ✅ Init con camino completo (explorador)
     public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso)
     {
         this.origenHQ = origenHQ;
         this.celdaRecurso = celdaRecurso;
 
-        // Copiar el camino exacto (ya incluye el recurso al final)
         camino = new List<Vector3>(caminoCompleto);
-
-        // Posicionar al recolector en el último punto (el recurso)
         transform.position = camino[camino.Count - 1];
 
         SetupLabel();
         StartCoroutine(RutinaCicloRecolector());
     }
-
-
 
     void SetupLabel()
     {
@@ -61,7 +53,6 @@ public class UnidadRecolector : MonoBehaviour
     {
         while (true)
         {
-            // 🔁 PRIMER TRAMO: del recurso hacia HQ (inverso)
             for (int i = camino.Count - 2; i >= 0; i--)
                 yield return MoverA(camino[i]);
 
@@ -74,14 +65,12 @@ public class UnidadRecolector : MonoBehaviour
 
             yield return new WaitForSeconds(1f);
 
-            // 🔁 VUELTA: de HQ al recurso (normal)
             for (int i = 1; i < camino.Count; i++)
                 yield return MoverA(camino[i]);
 
             yield return new WaitForSeconds(1f);
         }
     }
-
 
     IEnumerator MoverA(Vector3 objetivo)
     {

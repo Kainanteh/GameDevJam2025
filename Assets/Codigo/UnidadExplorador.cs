@@ -8,7 +8,6 @@ public class UnidadExplorador : MonoBehaviour
     public Vector3 destino;
     public float t = 0f;
     public float speed = 2f;
-
     public CellData celdaActual;
 
     public int coste;
@@ -45,21 +44,26 @@ public class UnidadExplorador : MonoBehaviour
 
             if (cell != null && !cell.isWalkable)
             {
- 
+                if (cell.building != null && cell.building.isHeadquarters && cell.building.ownerId != origen.ownerId)
+                {
+                    HeadquartersBuilding hqEnemigo = (HeadquartersBuilding)cell.building;
+                    hqEnemigo.RecibirDaño(coste);
+                    Debug.Log($"💥 Explorador impacta HQ enemigo en celda {cell.coordinates} y causa {coste} de daño");
+                }
+
                 Destroy(gameObject);
                 return;
             }
+
 
             if (t >= 1f && !enTransicionARecolector)
             {
                 esperandoInput = true;
             }
 
-
             return;
         }
 
-        // Detección de clic prolongado
         if (esperandoInput)
         {
             if (Input.GetMouseButton(0))
@@ -69,42 +73,29 @@ public class UnidadExplorador : MonoBehaviour
 
                 if (Vector3.Distance(mouseWorld, transform.position) < 0.75f)
                 {
-               
-        
-                        GameManager.Instance.IniciarDesdeExplorador(this);
-                        esperandoInput = false;
-      
-                    
+                    GameManager.Instance.IniciarDesdeExplorador(this);
+                    esperandoInput = false;
                 }
-         
             }
-        
         }
 
         if (enTransicionARecolector && recursoDestino != null)
         {
-            // Cuando llegue al recurso: crear recolector
-            origen.OnRecolectorSuccess();
             GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, transform.position, Quaternion.identity);
             unidad.name = "Recolector";
 
             unidad.AddComponent<UnidadRecolector>().InitConCamino(
                 origen,
-                new List<Vector3>(caminoRecorrido), // ya incluye el punto final
+                new List<Vector3>(caminoRecorrido),
                 recursoDestino
             );
-
-
-
-
 
             Destroy(gameObject);
             return;
         }
 
+
     }
-
-
 
     public void ConvertirSegunDestino(CellData targetCell)
     {
@@ -112,18 +103,16 @@ public class UnidadExplorador : MonoBehaviour
         {
             ConvertirseEnRecolector(targetCell);
         }
-        else if (targetCell.building != null && targetCell.building.ownerId != 0)
+        else if (targetCell.building != null && targetCell.building.isHeadquarters && targetCell.building.ownerId != 0)
         {
-            ConvertirseEnAtaque(targetCell.building);
+            ConvertirseEnCaminoDeAtaque(targetCell.building);
         }
         else
         {
             GameManager.Instance.exploradorSeleccionado = this;
             GameManager.Instance.CreatePathVisual(celdaActual, targetCell, false);
-            // GameManager.Instance.exploradorSeleccionado = null; ← se borra internamente después
         }
     }
-
 
     public CellData GetCeldaActual()
     {
@@ -132,28 +121,22 @@ public class UnidadExplorador : MonoBehaviour
 
     public void ConvertirseEnRecolector(CellData recurso)
     {
-        // Guardar info y preparar movimiento normal (ya gestionado en Update)
         recursoDestino = recurso;
-
-        // Añadir destino al camino
         caminoRecorrido.Add(recurso.transform.position);
 
-        // ⚠️ Dibujar visual desde la celda actual (donde está parado) hasta el recurso
         GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
         PathVisual visual = pathGO.GetComponent<PathVisual>();
 
         visual.Init(
-            transform.position,                      // desde donde está el explorador parado (celda libre)
-            recurso.transform.position,             // hasta el recurso
-            null,                                   // sin building origen
-            null,                                   // sin building destino
+            transform.position,
+            recurso.transform.position,
+            null,
+            null,
             GameManager.Instance.gridGenerator,
-            recurso                                 // para que registre nombre del recurso
+            recurso
         );
         visual.isRecolectar = true;
 
-
-        // Preparar para movimiento
         inicio = transform.position;
         destino = recurso.transform.position;
         t = 0f;
@@ -162,30 +145,160 @@ public class UnidadExplorador : MonoBehaviour
         enTransicionARecolector = true;
     }
 
-
-    public void ConvertirseEnAtaque(Building enemigo)
+    /*
+    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
     {
-        Vector3 origenVisual = transform.position;
-        Vector3 destinoVisual = enemigo.occupiedCells[0].transform.position;
+        Vector3 puntoInicio = transform.position;
+        Vector3 puntoFinal = hqEnemigo.occupiedCells[0].transform.position;
+
+        caminoRecorrido = new List<Vector3> { puntoInicio, puntoFinal };
 
         GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
         PathVisual visual = pathGO.GetComponent<PathVisual>();
 
-        visual.Init(origenVisual, destinoVisual, null, enemigo, GameManager.Instance.gridGenerator);
+        visual.Init(
+            puntoInicio,
+            puntoFinal,
+            null,
+            hqEnemigo,
+            GameManager.Instance.gridGenerator
+        );
         visual.isRecolectar = false;
 
-        origen.RegisterActivePath(origenVisual, destinoVisual, enemigo, false);
+        // Registro en el HQ el camino REAL que deben seguir los soldados
+        origen.RegisterActiveSoldado(
+            origen.occupiedCells[0].transform.position,
+            new List<Vector3>(caminoRecorrido),
+            hqEnemigo,
+            coste
+        );
+
+        // El explorador no se destruye ni genera unidades
+    }
+    */
+
+
+    /*
+    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
+    {
+        caminoRecorrido.Add(hqEnemigo.occupiedCells[0].transform.position);
+
+        GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
+        PathVisual visual = pathGO.GetComponent<PathVisual>();
+        visual.Init(
+            transform.position,
+            hqEnemigo.occupiedCells[0].transform.position,
+            null,
+            hqEnemigo,
+            GameManager.Instance.gridGenerator
+        );
+        visual.isRecolectar = false;
+
+        // Eliminar comportamiento del explorador inmediatamente
+        UnidadExplorador thisExplorador = GetComponent<UnidadExplorador>();
+        Destroy(thisExplorador);
+
+        // Convertir en soldado y continuar
+        UnidadSoldado soldado = gameObject.AddComponent<UnidadSoldado>();
+        soldado.Init(
+            origen,
+            new List<Vector3>(caminoRecorrido),
+            hqEnemigo,
+            coste
+        );
+
+        origen.RegisterActiveSoldado(
+            origen.occupiedCells[0].transform.position,
+            new List<Vector3>(caminoRecorrido),
+            hqEnemigo,
+            coste
+        );
+    }
+    */
+    
+    // Este codigo el explorador desaparece lo que esta mal y las unidades se crean bien en el hq recorren el camino para atacar al hq enemigo
+    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
+    {
+        caminoRecorrido.Add(hqEnemigo.occupiedCells[0].transform.position);
+
+        GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
+        PathVisual visual = pathGO.GetComponent<PathVisual>();
+
+        visual.Init(
+            transform.position,
+            hqEnemigo.occupiedCells[0].transform.position,
+            null,
+            hqEnemigo,
+            GameManager.Instance.gridGenerator
+        );
+        visual.isRecolectar = false;
+
+        origen.RegisterActiveSoldado(
+            caminoRecorrido[0],
+            new List<Vector3>(caminoRecorrido),
+            hqEnemigo,
+            coste
+        );
+
+        //Destroy(gameObject);
+        // En lugar de Destroy(gameObject), haz que continúe moviéndose al HQ enemigo
+        inicio = transform.position;
+        destino = hqEnemigo.occupiedCells[0].transform.position;
+        t = 0f;
+        esperandoInput = false;
+
+    }
+
+
+    /*
+    // Este codigo el explorador ataca desde su posicion al hq enemigo lo que esta bien pero no se generan unidades en el hq sino en el punto intermedio lo que esta mal
+    
+    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
+    {
+        Vector3 origenPos = transform.position;
+        Vector3 destinoPos = hqEnemigo.occupiedCells[0].transform.position;
+
+        caminoRecorrido = new List<Vector3> { origenPos, destinoPos };
+
+        GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
+        PathVisual visual = pathGO.GetComponent<PathVisual>();
+
+        visual.Init(
+            origenPos,
+            destinoPos,
+            null,
+            hqEnemigo,
+            GameManager.Instance.gridGenerator
+        );
+        visual.isRecolectar = false;
+
+        GameObject soldado = Object.Instantiate(GameManager.Instance.unidadPrefab, origenPos, Quaternion.identity);
+        soldado.name = "Soldado";
+        Debug.Log("✅ Soldado creado en: " + origenPos);
+        soldado.AddComponent<UnidadSoldado>().Init(
+            origen,
+            new List<Vector3>(caminoRecorrido),
+            hqEnemigo,
+            coste
+        );
+
+        origen.RegisterActiveSoldado(
+            origen.occupiedCells[0].transform.position,
+            new List<Vector3>(caminoRecorrido),
+            hqEnemigo,
+            coste
+        );
+
+
         Destroy(gameObject);
     }
+    */
 
 
     void MostrarTexto()
     {
         var label = GetComponentInChildren<TMPro.TextMeshProUGUI>();
         if (label != null)
-        {
             label.text = coste.ToString();
-        }
     }
-
 }

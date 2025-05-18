@@ -3,7 +3,6 @@ using UnityEngine;
 
 public class PathVisual : MonoBehaviour
 {
-
     public Building originBuilding;
     public Building targetBuilding;
 
@@ -13,13 +12,11 @@ public class PathVisual : MonoBehaviour
     public List<CellData> affectedCells = new List<CellData>();
     public bool isRecolectar = false;
 
-
     public void Init(Vector3 start, Vector3 end, Building origin, Building target, GridGenerator grid, CellData targetCell = null)
     {
         LineRenderer lr = GetComponent<LineRenderer>();
         if (lr == null) lr = gameObject.AddComponent<LineRenderer>();
 
-        // Visual
         lr.positionCount = 2;
         lr.SetPosition(0, start);
         lr.SetPosition(1, end);
@@ -29,13 +26,11 @@ public class PathVisual : MonoBehaviour
         lr.endColor = Color.black;
         lr.material = new Material(Shader.Find("Sprites/Default"));
 
-        // Registro de celdas atravesadas
         affectedCells = GetCellsBetween(start, end, grid);
 
         originBuilding = origin;
         targetBuilding = target;
 
-        // Nombre origen
         originName = origin != null ? origin.buildingName : "null";
 
         if (target != null)
@@ -53,9 +48,47 @@ public class PathVisual : MonoBehaviour
         {
             targetName = "Sin destino";
         }
-
     }
+    public void Init(List<Vector3> puntos, Building origin, Building target, GridGenerator grid, CellData targetCell = null)
+    {
+        LineRenderer lr = GetComponent<LineRenderer>();
+        if (lr == null) lr = gameObject.AddComponent<LineRenderer>();
 
+        lr.positionCount = puntos.Count;
+        lr.SetPositions(puntos.ToArray());
+        lr.startWidth = 0.15f;
+        lr.endWidth = 0.15f;
+        lr.startColor = Color.black;
+        lr.endColor = Color.black;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+
+        affectedCells = new List<CellData>();
+        foreach (var punto in puntos)
+        {
+            Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(punto.x), Mathf.RoundToInt(punto.y));
+            CellData cell = grid.GetCellAt(gridPos.x, gridPos.y);
+            if (cell != null && !affectedCells.Contains(cell))
+                affectedCells.Add(cell);
+        }
+
+        originBuilding = origin;
+        targetBuilding = target;
+
+        originName = origin != null ? origin.buildingName : "null";
+
+        if (target != null)
+        {
+            targetName = target.buildingName;
+        }
+        else if (targetCell != null)
+        {
+            targetName = targetCell.hasResource ? $"{targetCell.coordinates} {targetCell.resourceType}" : $"{targetCell.coordinates}";
+        }
+        else
+        {
+            targetName = "Sin destino";
+        }
+    }
 
     private List<CellData> GetCellsBetween(Vector3 start, Vector3 end, GridGenerator grid)
     {
@@ -63,7 +96,7 @@ public class PathVisual : MonoBehaviour
 
         Vector3 direction = (end - start).normalized;
         float distance = Vector3.Distance(start, end);
-        int steps = Mathf.CeilToInt(distance / 0.1f); // precisión
+        int steps = Mathf.CeilToInt(distance / 0.1f);
 
         for (int i = 0; i <= steps; i++)
         {

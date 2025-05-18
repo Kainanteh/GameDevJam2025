@@ -18,10 +18,9 @@ public class CellData : MonoBehaviour
     [HideInInspector] public GameObject borderLeft;
     [HideInInspector] public GameObject borderRight;
 
-    [HideInInspector] public TextMeshProUGUI label;  // NUEVO
+    [HideInInspector] public TextMeshProUGUI label;
 
     public bool resourceAlreadyCollected = false;
-
 
     void Awake()
     {
@@ -30,7 +29,7 @@ public class CellData : MonoBehaviour
         borderLeft = transform.Find("Borders/BorderLeft")?.gameObject;
         borderRight = transform.Find("Borders/BorderRight")?.gameObject;
 
-        label = GetComponentInChildren<TextMeshProUGUI>(); // buscar el número
+        label = GetComponentInChildren<TextMeshProUGUI>();
     }
 
     public void ShowBorder(string side, bool active, Color? colorOverride = null)
@@ -82,9 +81,9 @@ public class CellData : MonoBehaviour
         {
             baseColor = resourceType switch
             {
-                "Comida" => new Color(1f, 0.5f, 0.8f),   // rosa
+                "Comida" => new Color(1f, 0.5f, 0.8f),
                 "Oro" => Color.yellow,
-                "Madera" => new Color(0.6f, 0.4f, 0.2f), // marrón
+                "Madera" => new Color(0.6f, 0.4f, 0.2f),
                 _ => Color.white
             };
         }
@@ -106,7 +105,4 @@ public class CellData : MonoBehaviour
             originalColor = baseColor;
         }
     }
-
-
-
 }
