@@ -90,7 +90,7 @@ public class CellData : MonoBehaviour
         }
         else if (!isWalkable)
         {
-            baseColor = Color.Lerp(GameManager.Instance.nonWalkableCellBorderColor, Color.black, GameManager.Instance.baseColorIntensity);
+            baseColor = GameManager.Instance.obstacleColor;
         }
         else
         {

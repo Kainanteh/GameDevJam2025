@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class UnidadMover : MonoBehaviour
 {
@@ -32,16 +32,25 @@ public class UnidadMover : MonoBehaviour
 
         transform.position = Vector3.Lerp(start, end, t);
 
+        Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
+        var cell = GameManager.Instance.gridGenerator.GetCellAt(gridPos.x, gridPos.y);
+
+        if (cell != null && !cell.isWalkable)
+        {
+            Debug.Log($"❌ Unidad murió en obstáculo en {gridPos}");
+            Destroy(gameObject);
+            return;
+        }
+
         if (t >= 1f)
         {
-            //origen.UnidadReachedTarget(end);
-
             if (destino is HeadquartersBuilding hqDestino)
                 hqDestino.soldierCount = Mathf.Max(0, hqDestino.soldierCount - 1);
 
             Destroy(gameObject);
         }
     }
+
 
     void MostrarTexto()
     {

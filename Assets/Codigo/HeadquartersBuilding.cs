@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class HeadquartersBuilding : Building
 {
     public int soldierCount = 1;
-    public int maxSoldiers = 99;
+    public int maxSoldiers = 5;
 
     public float generationInterval = 5f;
     public int generationRate = 1;
@@ -22,45 +22,7 @@ public class HeadquartersBuilding : Building
         this.ownerId = ownerId;
     }
 
-    public void Tick(float deltaTime)
-    {
-        generationTimer += deltaTime;
 
-        while (generationTimer >= generationInterval)
-        {
-            generationTimer -= generationInterval;
-
-            int usable = generationRate;
-
-            for (int i = 0; i < activePaths.Count && usable > 0;)
-            {
-                var path = activePaths[i];
-
-                if (path.isRecolectar)
-                {
-                    // Solo enviar uno, luego eliminar el camino
-                    LaunchRecolector(path.origen);
-                    activePaths.RemoveAt(i); // Elimina camino de recolecta tras primer uso
-                    continue; // No incrementar i, ya que la lista se ha modificado
-                }
-                else
-                {
-                    LaunchUnidad(path.origen, path.destino, path.target);
-                    usable--;
-                    i++; // Solo avanzar si no eliminamos
-                }
-            }
-
-
-            if (usable > 0 && soldierCount < maxSoldiers)
-            {
-                soldierCount += usable;
-                soldierCount = Mathf.Min(soldierCount, maxSoldiers);
-            }
-
-            UpdateLabel();
-        }
-    }
 
     private void LaunchRecolector(Vector3 origen)
     {
@@ -77,6 +39,55 @@ public class HeadquartersBuilding : Building
         unidad.AddComponent<UnidadRecolector>().Init(this, origen, destino, celdaRecurso);
     }
 
+    public void Tick(float deltaTime)
+    {
+        generationTimer += deltaTime;
+
+        while (generationTimer >= generationInterval)
+        {
+            generationTimer -= generationInterval;
+
+            int usable = generationRate;
+
+            // ✅ Enviar soldados por caminos activos (ataques)
+            for (int i = 0; i < activePaths.Count && usable > 0;)
+            {
+                var path = activePaths[i];
+
+                if (path.isRecolectar)
+                {
+                    if (soldierCount <= 0)
+                    {
+                        Debug.LogWarning("❌ No hay soldados para recolectar.");
+                        activePaths.RemoveAt(i);
+                        continue;
+                    }
+
+                    soldierCount--;
+                    LaunchRecolector(path.origen);
+                    activePaths.RemoveAt(i);
+                    UpdateLabel();
+                    continue;
+                }
+                else
+                {
+                    LaunchUnidad(path.origen, path.destino, path.target);
+                    usable--; // consume generación
+                    i++;
+                }
+            }
+
+            // ✅ Sumar soldados si hay generación sobrante y no estamos en el máximo
+            if (usable > 0 && soldierCount < maxSoldiers)
+            {
+                soldierCount += usable;
+                soldierCount = Mathf.Min(soldierCount, maxSoldiers);
+            }
+
+            // ✅ Si estamos al máximo y sobró generación → ignoramos pero seguimos tickeando
+            UpdateLabel();
+        }
+    }
 
 
 
@@ -108,6 +119,7 @@ public class HeadquartersBuilding : Building
         UnidadMover mover = unidad.AddComponent<UnidadMover>();
         mover.Init(this, target, origen, destino, coste);
     }
+
 
 
 
@@ -154,4 +166,60 @@ public class HeadquartersBuilding : Building
 
         debugLabel = text;
     }
+
+
+    public void RegistrarCaminoPorTipo(Vector3 origenVisual, Vector3 destino, Building target, TipoCamino tipo, CellData celdaDestino = null)
+    {
+        if (tipo == TipoCamino.Recolectar)
+        {
+            if (soldierCount <= 0)
+            {
+                Debug.LogWarning("❌ No hay soldados disponibles para recolectar.");
+                return;
+            }
+
+            soldierCount--;
+            UpdateLabel();
+
+            LaunchRecolector(origenVisual);
+            return;
+        }
+
+        if (tipo == TipoCamino.Ataque)
+        {
+            if (soldierCount <= 0)
+            {
+                Debug.LogWarning("❌ No hay soldados disponibles para atacar.");
+                return;
+            }
+
+            soldierCount--;
+            UpdateLabel();
+
+            activePaths.Add((origenVisual, destino, target, false));
+            return;
+        }
+
+        if (tipo == TipoCamino.Exploracion)
+        {
+            if (soldierCount <= 0)
+            {
+                Debug.LogWarning("❌ No hay soldados disponibles para explorar.");
+                return;
+            }
+
+            soldierCount--;
+            UpdateLabel();
+
+            GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origenVisual, Quaternion.identity);
+            unidad.name = "Explorador";
+
+            var comp = unidad.AddComponent<UnidadExplorador>();
+            comp.Init(this, origenVisual, destino, celdaDestino, 1);
+            return;
+        }
+    }
+
+
+
 }

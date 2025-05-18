@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class PathVisual : MonoBehaviour
@@ -63,7 +63,7 @@ public class PathVisual : MonoBehaviour
 
         Vector3 direction = (end - start).normalized;
         float distance = Vector3.Distance(start, end);
-        int steps = Mathf.CeilToInt(distance / 0.1f); // precisi�n
+        int steps = Mathf.CeilToInt(distance / 0.1f); // precisión
 
         for (int i = 0; i <= steps; i++)
         {

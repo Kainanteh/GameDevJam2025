@@ -2,6 +2,14 @@
 using System.Collections.Generic;
 using TMPro;
 
+public enum TipoCamino
+{
+    Ataque,
+    Recolectar,
+    Exploracion
+}
+
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -20,6 +28,8 @@ public class GameManager : MonoBehaviour
     public Color walkableCellBorderColor = Color.yellow;
     public Color nonWalkableCellBorderColor = Color.red;
     public Color buildingBorderColor = Color.green;
+    public Color obstacleColor = new Color(0f, 0.3f, 0f); // Verde oscuro
+
 
     [Header("Colores por jugador (según ownerId)")]
     public Color playerColor = Color.blue;
@@ -33,6 +43,8 @@ public class GameManager : MonoBehaviour
     private readonly List<CellData> selectedCells = new();
     private bool isDraggingPath = false;
     private CellData pathStartCell = null;
+
+    public UnidadExplorador exploradorSeleccionado = null;
 
     void Awake()
     {
@@ -62,9 +74,13 @@ public class GameManager : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0))
         {
-            DetectCellClick();
-            StartPathAction();
+            if (exploradorSeleccionado == null)
+            {
+                DetectCellClick();
+                StartPathAction();
+            }
         }
+
 
         if (Input.GetMouseButtonUp(0))
         {
@@ -124,18 +140,51 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+
+
+    public void IniciarDesdeExplorador(UnidadExplorador explorador)
+    {
+        exploradorSeleccionado = explorador;
+        pathStartCell = explorador.GetCeldaActual(); // ← esto no puede ser null
+        isDraggingPath = true;
+    }
+
     void EndPathAction()
     {
-        if (!isDraggingPath || pathStartCell == null) return;
-
         Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         RaycastHit2D hit = Physics2D.Raycast(mouseWorldPos, Vector2.zero);
-        isDraggingPath = false;
 
         if (hit.collider == null) return;
 
         CellData targetCell = hit.collider.GetComponentInParent<CellData>();
         if (targetCell == null) return;
+
+        // 🧭 Explorador activo: tiene prioridad absoluta
+        if (exploradorSeleccionado != null)
+        {
+            Debug.Log("🧭 EndPathAction con explorador activo");
+            if (targetCell.hasResource && targetCell.resourceType == "Comida")
+            {
+                exploradorSeleccionado.ConvertirseEnRecolector(targetCell);
+            }
+            else if (targetCell.building != null && targetCell.building.ownerId != 0)
+            {
+                exploradorSeleccionado.ConvertirseEnAtaque(targetCell.building);
+            }
+            else
+            {
+                CreatePathVisual(exploradorSeleccionado.GetCeldaActual(), targetCell, false);
+            }
+
+            exploradorSeleccionado = null;
+            isDraggingPath = false;
+            return;
+        }
+
+        // 🧱 Flujo normal desde HQ
+        if (!isDraggingPath || pathStartCell == null) return;
+        isDraggingPath = false;
 
         if (targetCell.hasResource && targetCell.resourceType == "Comida")
         {
@@ -149,11 +198,14 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("Camino a ninguna parte");
+            Debug.Log("Exploración a celda libre");
+            CreatePathVisual(pathStartCell, targetCell, false);
         }
     }
 
-    void CreatePathVisual(CellData fromCell, CellData toCell, bool isRecolectar)
+
+
+    public void CreatePathVisual(CellData fromCell, CellData toCell, bool isRecolectar)
     {
         if (pathLinePrefab == null || unidadPrefab == null) return;
 
@@ -162,12 +214,12 @@ public class GameManager : MonoBehaviour
         if (visual == null) return;
 
         Building fromBuilding = fromCell.building;
-        if (fromBuilding == null) return;
+
+        bool esDesdeExplorador = GameManager.Instance.exploradorSeleccionado != null;
 
         Vector3 from;
         Vector3 to;
 
-        // Si el destino tiene edificio, usar puntos normales
         if (toCell.building != null)
         {
             from = GetEdgeExitPoint(fromBuilding, toCell.building);
@@ -175,30 +227,61 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // calcular dirección de salida desde el cuartel hacia la celda
             Vector3 toPos = toCell.transform.position;
             Vector3 fromCenter = Vector3.zero;
-            foreach (var c in fromBuilding.occupiedCells)
-                fromCenter += c.transform.position;
-            fromCenter /= fromBuilding.occupiedCells.Count;
+
+            if (fromBuilding != null)
+            {
+                foreach (var c in fromBuilding.occupiedCells)
+                    fromCenter += c.transform.position;
+                fromCenter /= fromBuilding.occupiedCells.Count;
+            }
+            else
+            {
+                fromCenter = fromCell.transform.position;
+            }
 
             Vector3 dir = (toPos - fromCenter).normalized;
             float extraOffset = 0.6f;
-            float exitDistance = Mathf.Sqrt(fromBuilding.occupiedCells.Count) * 0.5f + extraOffset;
+            float exitDistance = Mathf.Sqrt(1f) * 0.5f + extraOffset;
 
             from = fromCenter + dir * exitDistance;
-
-            // el destino es la celda, pero retrocedido un poco para no tocar el centro
-            to = toPos - dir * extraOffset;
+            to = toPos;
         }
 
         visual.Init(from, to, fromBuilding, toCell.building, gridGenerator, toCell);
 
-        visual.isRecolectar = isRecolectar;
+        TipoCamino tipo;
+        if (isRecolectar)
+            tipo = TipoCamino.Recolectar;
+        else if (toCell.building != null)
+            tipo = TipoCamino.Ataque;
+        else
+            tipo = TipoCamino.Exploracion;
+
+        visual.isRecolectar = (tipo == TipoCamino.Recolectar);
 
         if (fromBuilding is HeadquartersBuilding hq)
-            hq.RegisterActivePath(from, to, toCell.building, isRecolectar);
+        {
+            hq.RegistrarCaminoPorTipo(from, to, toCell.building, tipo, toCell);
+        }
+        else if (GameManager.Instance.exploradorSeleccionado != null)
+        {
+            Debug.Log("🔁 Ejecutando desde explorador activo");
+            GameManager.Instance.exploradorSeleccionado.inicio = GameManager.Instance.exploradorSeleccionado.transform.position;
+            GameManager.Instance.exploradorSeleccionado.destino = toCell.transform.position;
+            GameManager.Instance.exploradorSeleccionado.celdaActual = toCell;
+            GameManager.Instance.exploradorSeleccionado.t = 0f;
+
+            GameManager.Instance.exploradorSeleccionado.esperandoInput = false;
+            GameManager.Instance.exploradorSeleccionado = null;
+        }
+        else
+        {
+            Debug.Log("❌ Camino cancelado: no hay building y no es explorador");
+        }
     }
+
 
 
 
@@ -375,6 +458,24 @@ public class GameManager : MonoBehaviour
 
 
         }
+
+
+        Vector2Int[] obstaculos = new Vector2Int[]
+        {
+            new Vector2Int(4, 4), new Vector2Int(4, 5),
+            new Vector2Int(5, 4), new Vector2Int(5, 5)
+        };
+
+        foreach (var pos in obstaculos)
+        {
+            CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+            if (cell != null)
+            {
+                cell.isWalkable = false;
+                cell.ApplyDebugColor(); // para que se vea
+            }
+        }
+
 
 
 
