@@ -4,7 +4,8 @@ using UnityEngine;
 
 public enum BuildingType
 {
-    Headquarters
+    Headquarters,
+    FuerteNeutral
 }
 
 public class Building
@@ -21,11 +22,10 @@ public class Building
         this.type = type;
     }
 
-    public bool isHeadquarters => type == BuildingType.Headquarters;
+    public bool isHeadquarters => type == BuildingType.Headquarters || type == BuildingType.FuerteNeutral;
 
     public virtual void PrintInfo()
     {
         Debug.Log($"Edificio: {buildingName}, Owner: {ownerId}");
     }
-
 }

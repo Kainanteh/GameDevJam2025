@@ -112,4 +112,15 @@ public class PathVisual : MonoBehaviour
 
         return result;
     }
+
+    public string GetOriginName()
+    {
+        return originName;
+    }
+
+    public string GetTargetName()
+    {
+        return targetName;
+    }
+
 }

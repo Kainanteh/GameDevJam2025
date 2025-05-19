@@ -28,8 +28,11 @@ public class UnidadExplorador : MonoBehaviour
         this.coste = coste;
         this.caminoRecorrido = new List<Vector3> { inicio, destino };
 
-        MostrarTexto();
+        var label = GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+        if (label != null)
+            label.text = $"E{coste}";
     }
+
 
     void Update()
     {
@@ -85,10 +88,13 @@ public class UnidadExplorador : MonoBehaviour
             unidad.name = "Recolector";
 
             unidad.AddComponent<UnidadRecolector>().InitConCamino(
-                origen,
-                new List<Vector3>(caminoRecorrido),
-                recursoDestino
-            );
+              origen,
+              new List<Vector3>(caminoRecorrido),
+              recursoDestino,
+              null,
+              false
+          );
+
 
             Destroy(gameObject);
             return;
@@ -216,10 +222,12 @@ public class UnidadExplorador : MonoBehaviour
     }
     */
     
-    // Este codigo el explorador desaparece lo que esta mal y las unidades se crean bien en el hq recorren el camino para atacar al hq enemigo
+
     public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
     {
+        caminoRecorrido.Add(transform.position);
         caminoRecorrido.Add(hqEnemigo.occupiedCells[0].transform.position);
+
 
         GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
         PathVisual visual = pathGO.GetComponent<PathVisual>();
@@ -249,50 +257,6 @@ public class UnidadExplorador : MonoBehaviour
 
     }
 
-
-    /*
-    // Este codigo el explorador ataca desde su posicion al hq enemigo lo que esta bien pero no se generan unidades en el hq sino en el punto intermedio lo que esta mal
-    
-    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
-    {
-        Vector3 origenPos = transform.position;
-        Vector3 destinoPos = hqEnemigo.occupiedCells[0].transform.position;
-
-        caminoRecorrido = new List<Vector3> { origenPos, destinoPos };
-
-        GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
-        PathVisual visual = pathGO.GetComponent<PathVisual>();
-
-        visual.Init(
-            origenPos,
-            destinoPos,
-            null,
-            hqEnemigo,
-            GameManager.Instance.gridGenerator
-        );
-        visual.isRecolectar = false;
-
-        GameObject soldado = Object.Instantiate(GameManager.Instance.unidadPrefab, origenPos, Quaternion.identity);
-        soldado.name = "Soldado";
-        Debug.Log("✅ Soldado creado en: " + origenPos);
-        soldado.AddComponent<UnidadSoldado>().Init(
-            origen,
-            new List<Vector3>(caminoRecorrido),
-            hqEnemigo,
-            coste
-        );
-
-        origen.RegisterActiveSoldado(
-            origen.occupiedCells[0].transform.position,
-            new List<Vector3>(caminoRecorrido),
-            hqEnemigo,
-            coste
-        );
-
-
-        Destroy(gameObject);
-    }
-    */
 
 
     void MostrarTexto()

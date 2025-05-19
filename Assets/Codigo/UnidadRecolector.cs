@@ -8,11 +8,12 @@ public class UnidadRecolector : MonoBehaviour
     private List<Vector3> camino = new List<Vector3>();
     private int index = 0;
     private float speed = 2f;
-
     private bool yaSumado = false;
     private CellData celdaRecurso;
     private TMPro.TextMeshProUGUI label;
-
+    public bool empiezaDesdeRecurso = false;
+    private int coste = 1;
+    public CaminoActivo caminoAsociado;
     public void Init(HeadquartersBuilding origenHQ, Vector3 origen, Vector3 destino, CellData celdaRecurso)
     {
         this.origenHQ = origenHQ;
@@ -28,31 +29,46 @@ public class UnidadRecolector : MonoBehaviour
         StartCoroutine(RutinaCicloRecolector());
     }
 
-    public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso)
+    public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso, CaminoActivo caminoAsociado, bool empezarEnInicio = true)
     {
         this.origenHQ = origenHQ;
         this.celdaRecurso = celdaRecurso;
+        this.camino = new List<Vector3>(caminoCompleto);
+        this.empiezaDesdeRecurso = !empezarEnInicio;
+        this.coste = 1;
+        this.caminoAsociado = caminoAsociado;
 
-        camino = new List<Vector3>(caminoCompleto);
-        transform.position = camino[camino.Count - 1];
+        transform.position = empezarEnInicio ? camino[0] : camino[camino.Count - 1];
 
         SetupLabel();
         StartCoroutine(RutinaCicloRecolector());
     }
 
+
+
+
     void SetupLabel()
     {
         label = GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
-        if (label == null)
-            Debug.LogWarning("❌ NO se encontró el TextMeshProUGUI en la unidad.");
-        else
-            Debug.Log("✅ Label encontrado correctamente: " + label.text);
+        if (label != null)
+            label.text = $"R{coste}";
     }
 
     IEnumerator RutinaCicloRecolector()
     {
+        bool haLlegadoAlRecurso = empiezaDesdeRecurso;
+
         while (true)
         {
+            if (!haLlegadoAlRecurso)
+            {
+                for (int i = 1; i < camino.Count; i++)
+                    yield return MoverA(camino[i]);
+
+                haLlegadoAlRecurso = true;
+                yield return new WaitForSeconds(1f);
+            }
+
             for (int i = camino.Count - 2; i >= 0; i--)
                 yield return MoverA(camino[i]);
 
@@ -60,7 +76,6 @@ public class UnidadRecolector : MonoBehaviour
             {
                 yaSumado = true;
                 origenHQ.OnRecolectorSuccess();
-                Debug.Log("⬆️ Recolector sube pasiva");
             }
 
             yield return new WaitForSeconds(1f);
@@ -71,6 +86,7 @@ public class UnidadRecolector : MonoBehaviour
             yield return new WaitForSeconds(1f);
         }
     }
+
 
     IEnumerator MoverA(Vector3 objetivo)
     {

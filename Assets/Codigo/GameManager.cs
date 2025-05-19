@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviour
     private CellData pathStartCell = null;
 
     public UnidadExplorador exploradorSeleccionado = null;
+    public int UltimoAtacanteOwnerId = -1;
 
     void Awake()
     {
@@ -112,6 +113,7 @@ public class GameManager : MonoBehaviour
             1 => enemy1Color,
             2 => enemy2Color,
             3 => enemy3Color,
+            10 => new Color(0.8f, 0.8f, 0.8f),
             _ => Color.gray
         };
     }
@@ -254,7 +256,9 @@ public class GameManager : MonoBehaviour
             exploradorSeleccionado.t = 0f;
 
             exploradorSeleccionado.esperandoInput = false;
+            exploradorSeleccionado.caminoRecorrido.Add(toCell.transform.position);
             exploradorSeleccionado = null;
+
         }
     }
 
@@ -448,6 +452,18 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        // FuerteNeutral
+        HeadquartersBuilding fuerteNeutral = new HeadquartersBuilding("Fuerte Neutral", 10, true);
+        CellData celdaFuerte = gridGenerator.GetCellAt(8, 1);
+        if (celdaFuerte != null)
+        {
+            celdaFuerte.building = fuerteNeutral;
+            celdaFuerte.isWalkable = false;
+            celdaFuerte.hasResource = false;
+            fuerteNeutral.occupiedCells.Add(celdaFuerte);
+        }
+        fuerteNeutral.soldierCount = 5;
+        fuerteNeutral.FinalizeSetup();
 
 
 
