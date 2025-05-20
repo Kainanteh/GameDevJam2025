@@ -32,10 +32,9 @@ public class HeadquartersBuilding : Building
         }
     }
 
+
     public void Tick(float deltaTime)
     {
-
-
         foreach (var camino in caminosActivos)
         {
             var key = (
@@ -55,7 +54,7 @@ public class HeadquartersBuilding : Building
                 {
                     ataqueTimers[key] = 0f;
 
-                    if (soldierCount > 0)
+                    if (soldierCount > 1)
                     {
                         soldierCount--;
                         UpdateLabel();
@@ -73,7 +72,7 @@ public class HeadquartersBuilding : Building
                     }
                     else
                     {
-                        Debug.Log($"❌ HQ {buildingName} no puede lanzar soldado: sin soldados disponibles");
+                        Debug.Log($"⚠️ HQ {buildingName} no lanza soldado: solo queda 1 soldado");
                     }
                 }
             }
@@ -98,7 +97,11 @@ public class HeadquartersBuilding : Building
         {
             generationTimer = 0f;
         }
+
+        if (ownerId == 11)
+            EvaluarResolucionDisputa();
     }
+
 
 
 
@@ -152,12 +155,19 @@ public class HeadquartersBuilding : Building
 
     private void LaunchRecolector(Vector3 origen, CellData celdaRecurso, List<Vector3> camino, CaminoActivo caminoActivo)
     {
+        if (soldierCount <= 1)
+        {
+            Debug.Log($"⚠️ HQ {buildingName} no lanza recolector: solo queda 1 soldado");
+            return;
+        }
+
         GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origen, Quaternion.identity);
         unidad.name = "Recolector";
         unidad.AddComponent<UnidadRecolector>().InitConCamino(this, camino, celdaRecurso, caminoActivo);
         soldierCount--;
         UpdateLabel();
     }
+
 
     private void LaunchSoldado(Vector3 origen, List<Vector3> camino, Building objetivo, int daño, CaminoActivo caminoActivo)
     {
@@ -217,14 +227,23 @@ public class HeadquartersBuilding : Building
         UpdateLabel();
         Debug.Log($"💥 HQ {buildingName} recibe {daño} de daño");
 
-        // Permitir reconquista solo si fue originalmente FuerteNeutral
-        // y no es HQ principal del jugador (0) ni del enemigo (1)
+        if (soldierCount == 0)
+        {
+            if (ownerId == 0)
+            {
+                Debug.Log("❌ El jugador ha perdido su cuartel principal.");
+            }
+            else if (ownerId > 0 && ownerId < 10)
+            {
+                Debug.Log($"✅ HQ enemigo {buildingName} ha sido destruido.");
+            }
+        }
+
         if (fueFuerteNeutral && soldierCount == 0)
         {
             ConquistarFuerte();
         }
     }
-
 
 
     private void ConquistarFuerte()
@@ -236,6 +255,37 @@ public class HeadquartersBuilding : Building
             return;
         }
 
+        // Evaluar disputa por caminos activos
+        int presionJugador = 0;
+        int presionEnemigo = 0;
+
+        foreach (var cell in GameManager.Instance.gridGenerator.allCells.Values)
+        {
+            if (cell.building is HeadquartersBuilding origenHQ)
+            {
+                foreach (var camino in origenHQ.GetCaminosActivos())
+                {
+                    if (!camino.isAtaque || camino.esRefuerzoPasivo) continue;
+                    if (camino.objetivo != this) continue;
+
+                    if (origenHQ.ownerId == 0)
+                        presionJugador++;
+                    else if (origenHQ.ownerId > 0 && origenHQ.ownerId < 10)
+                        presionEnemigo++;
+                }
+            }
+        }
+
+        if (presionJugador > 0 && presionEnemigo > 0)
+        {
+            ownerId = 11;
+            generationRate = 0;
+            ApplyColorDisputa();
+            Debug.Log("⚖️ Fuerte entra en disputa (evaluado en ConquistarFuerte)");
+            return;
+        }
+
+        // Conquista directa si no hay disputa
         string nuevoNombre = $"Cuartel {nuevoOwnerId}";
 
         ownerId = nuevoOwnerId;
@@ -246,8 +296,7 @@ public class HeadquartersBuilding : Building
         maxSoldiers = 5;
         generationTimer = 0f;
         esFuerteNeutral = false;
-        fueFuerteNeutral = true; // 🔁 ¡conservar propiedad reconquistable!
-
+        fueFuerteNeutral = true;
 
         UpdateLabel();
         foreach (var celda in occupiedCells)
@@ -255,7 +304,6 @@ public class HeadquartersBuilding : Building
 
         int refuerzos = 0;
 
-        // 🔁 Buscar caminos asociados a la conquista y aumentar generationRate
         foreach (var cell in occupiedCells)
         {
             Collider2D[] colisiones = Physics2D.OverlapCircleAll(cell.transform.position, 1.5f);
@@ -274,6 +322,69 @@ public class HeadquartersBuilding : Building
         generationRate += refuerzos;
 
         Debug.Log($"🏳️ FuerteNeutral ha sido conquistado por jugador {ownerId} y ahora actúa como HQ con generationRate = {generationRate}");
+    }
+
+    private void ApplyColorDisputa()
+    {
+        foreach (var celda in occupiedCells)
+        {
+            var sr = celda.transform.Find("Square")?.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.color = new Color(0.6f, 0f, 0.8f); // Púrpura
+                celda.originalColor = sr.color;
+            }
+        }
+    }
+
+    public List<CaminoActivo> GetCaminosActivos()
+    {
+        return caminosActivos;
+    }
+
+    public void EvaluarResolucionDisputa()
+    {
+        if (ownerId != 11) return;
+        int presionJugador = 0;
+        int presionEnemigo = 0;
+
+        foreach (var cell in GameManager.Instance.gridGenerator.allCells.Values)
+        {
+            if (cell.building is HeadquartersBuilding origenHQ)
+            {
+                foreach (var camino in origenHQ.GetCaminosActivos())
+                {
+                    if (!camino.isAtaque || camino.esRefuerzoPasivo) continue;
+                    if (camino.objetivo != this) continue;
+                    if (origenHQ.ownerId == 0) presionJugador++;
+                    else if (origenHQ.ownerId > 0 && origenHQ.ownerId < 10) presionEnemigo++;
+                }
+            }
+        }
+
+        if (presionJugador == 0 && presionEnemigo == 0) return;
+        if (presionJugador == presionEnemigo) return;
+
+        int ganador = (presionJugador > presionEnemigo) ? 0 : GameManager.Instance.UltimoAtacanteOwnerId;
+
+        ownerId = ganador;
+        type = BuildingType.Headquarters;
+        buildingName = $"Cuartel {ganador}";
+        soldierCount = 3;
+        // ↓ en vez de reiniciar, sumamos la diferencia
+        int diff = Mathf.Abs(presionJugador - presionEnemigo);
+        generationRate += diff;
+        Debug.Log("Presion:" + diff);
+        maxSoldiers = 5;
+        generationTimer = 0f;
+        esFuerteNeutral = false;
+        fueFuerteNeutral = true;
+
+        UpdateLabel();
+        foreach (var celda in occupiedCells)
+            celda.ApplyDebugColor();
+
+        Debug.Log($"✅ Disputa resuelta: fuerte conquistado por jugador {ganador} (+{diff} generations)");
     }
 
 
