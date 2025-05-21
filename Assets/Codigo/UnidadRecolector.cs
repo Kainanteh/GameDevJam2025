@@ -5,8 +5,7 @@ using System.Collections.Generic;
 public class UnidadRecolector : MonoBehaviour
 {
     private HeadquartersBuilding origenHQ;
-    private List<Vector3> camino = new List<Vector3>();
-    private int index = 0;
+    private List<Vector3> camino = new();
     private float speed = 2f;
     private bool yaSumado = false;
     private CellData celdaRecurso;
@@ -14,20 +13,6 @@ public class UnidadRecolector : MonoBehaviour
     public bool empiezaDesdeRecurso = false;
     private int coste = 1;
     public CaminoActivo caminoAsociado;
-    public void Init(HeadquartersBuilding origenHQ, Vector3 origen, Vector3 destino, CellData celdaRecurso)
-    {
-        this.origenHQ = origenHQ;
-        this.celdaRecurso = celdaRecurso;
-
-        camino.Clear();
-        camino.Add(origen);
-        camino.Add(destino);
-
-        transform.position = origen;
-        SetupLabel();
-
-        StartCoroutine(RutinaCicloRecolector());
-    }
 
     public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso, CaminoActivo caminoAsociado, bool empezarEnInicio = true)
     {
@@ -44,9 +29,6 @@ public class UnidadRecolector : MonoBehaviour
         StartCoroutine(RutinaCicloRecolector());
     }
 
-
-
-
     void SetupLabel()
     {
         label = GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
@@ -56,6 +38,7 @@ public class UnidadRecolector : MonoBehaviour
 
     IEnumerator RutinaCicloRecolector()
     {
+        SpriteOrientador orientador = GetComponent<SpriteOrientador>();
         bool haLlegadoAlRecurso = empiezaDesdeRecurso;
 
         while (true)
@@ -63,14 +46,14 @@ public class UnidadRecolector : MonoBehaviour
             if (!haLlegadoAlRecurso)
             {
                 for (int i = 1; i < camino.Count; i++)
-                    yield return MoverA(camino[i]);
+                    yield return MoverA(camino[i], orientador);
 
                 haLlegadoAlRecurso = true;
                 yield return new WaitForSeconds(1f);
             }
 
             for (int i = camino.Count - 2; i >= 0; i--)
-                yield return MoverA(camino[i]);
+                yield return MoverA(camino[i], orientador);
 
             if (!yaSumado)
             {
@@ -81,17 +64,19 @@ public class UnidadRecolector : MonoBehaviour
             yield return new WaitForSeconds(1f);
 
             for (int i = 1; i < camino.Count; i++)
-                yield return MoverA(camino[i]);
+                yield return MoverA(camino[i], orientador);
 
             yield return new WaitForSeconds(1f);
         }
     }
 
-
-    IEnumerator MoverA(Vector3 objetivo)
+    IEnumerator MoverA(Vector3 objetivo, SpriteOrientador _ = null)
     {
+        var orientador = transform.Find("GnomoSprite")?.GetComponent<SpriteOrientador>();
+
         while (Vector3.Distance(transform.position, objetivo) > 0.05f)
         {
+            orientador?.ActualizarDireccion(transform.position, objetivo);
             transform.position = Vector3.MoveTowards(transform.position, objetivo, speed * Time.deltaTime);
 
             Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
@@ -107,4 +92,5 @@ public class UnidadRecolector : MonoBehaviour
             yield return null;
         }
     }
+
 }

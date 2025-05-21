@@ -102,8 +102,22 @@ public class HeadquartersBuilding : Building
             EvaluarResolucionDisputa();
     }
 
+    public Vector2Int GetCeldaInferiorIzquierda()
+    {
+        Vector2Int min = occupiedCells[0].coordinates;
+        foreach (var c in occupiedCells)
+        {
+            if (c.coordinates.x < min.x || (c.coordinates.x == min.x && c.coordinates.y < min.y))
+                min = c.coordinates;
+        }
+        return min;
+    }
 
 
+    public bool IsFuerteNeutral()
+    {
+        return esFuerteNeutral;
+    }
 
     public void UnidadReachedTarget(Vector3 destino)
     {
@@ -199,7 +213,7 @@ public class HeadquartersBuilding : Building
 
         Vector3 center = GetCenter();
 
-        GameObject labelGO = new GameObject($"{buildingName}_Label");
+        /*GameObject labelGO = new GameObject($"{buildingName}_Label");
         labelGO.transform.position = new Vector3(center.x, center.y, -0.2f);
 
         var text = labelGO.AddComponent<TextMeshPro>();
@@ -208,7 +222,7 @@ public class HeadquartersBuilding : Building
         text.alignment = TextAlignmentOptions.Center;
         text.color = Color.black;
 
-        debugLabel = text;
+        debugLabel = text;*/
     }
 
     private Vector3 GetCenter()

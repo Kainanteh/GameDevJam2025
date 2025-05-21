@@ -18,6 +18,7 @@ public class GridGenerator : MonoBehaviour
             {
                 Vector2 position = new Vector2(x * cellSize, y * cellSize);
                 GameObject cell = Instantiate(cellPrefab, position, Quaternion.identity, transform);
+
                 cell.name = $"Cell_{x}_{y}";
 
                 TextMeshProUGUI tmp = cell.GetComponentInChildren<TextMeshProUGUI>();

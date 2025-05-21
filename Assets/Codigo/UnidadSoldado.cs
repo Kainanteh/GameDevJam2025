@@ -1,5 +1,4 @@
-﻿
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,6 +11,7 @@ public class UnidadSoldado : MonoBehaviour
     private int daño;
     private Building hqObjetivo;
     public CaminoActivo caminoAsociado;
+
     public void Init(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, Building hqObjetivo, int daño, CaminoActivo caminoAsociado)
     {
         this.origenHQ = origenHQ;
@@ -30,15 +30,13 @@ public class UnidadSoldado : MonoBehaviour
         StartCoroutine(RutinaAvanzarYAtacar());
     }
 
-
     IEnumerator RutinaAvanzarYAtacar()
     {
         for (int i = 1; i < camino.Count; i++)
             yield return MoverA(camino[i]);
 
-        if (hqObjetivo != null && hqObjetivo is HeadquartersBuilding objetivo)
+        if (hqObjetivo is HeadquartersBuilding objetivo)
         {
-            // Si el objetivo ya es aliado, no hacer daño
             if (objetivo.ownerId == origenHQ.ownerId)
             {
                 Debug.Log($"🚫 Soldado ignora impacto: {objetivo.buildingName} ya es del mismo owner ({objetivo.ownerId})");
@@ -58,12 +56,13 @@ public class UnidadSoldado : MonoBehaviour
         Destroy(gameObject);
     }
 
-
-
     IEnumerator MoverA(Vector3 objetivo)
     {
+        var orientador = transform.Find("GnomoSprite")?.GetComponent<SpriteOrientador>();
+
         while (Vector3.Distance(transform.position, objetivo) > 0.05f)
         {
+            orientador?.ActualizarDireccion(transform.position, objetivo);
             transform.position = Vector3.MoveTowards(transform.position, objetivo, speed * Time.deltaTime);
 
             Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
@@ -80,10 +79,9 @@ public class UnidadSoldado : MonoBehaviour
         }
     }
 
+
     public int GetOwnerId()
     {
         return origenHQ != null ? origenHQ.ownerId : -1;
     }
-
-
 }

@@ -69,31 +69,63 @@ public class CellData : MonoBehaviour
             label.enabled = visible;
     }
 
+
     public void ApplyDebugColor()
     {
         Color baseColor;
+        bool activarHierba = false;
+        int hijoAActivar = -1;
 
         if (building != null)
         {
             baseColor = GameManager.Instance.GetOwnerColor(building.ownerId);
+
+            if (building is HeadquartersBuilding hq)
+            {
+                if (hq.IsFuerteNeutral())
+                {
+                    hijoAActivar = 6; // Fuerte neutral
+                }
+                else
+                {
+                    // Mostrar HQ (2x2) solo en la celda inferior izquierda
+                    Vector2Int minCoord = hq.GetCeldaInferiorIzquierda();
+                    if (coordinates == minCoord)
+                    {
+                        hijoAActivar = 7; // HQ
+                    }
+                }
+            }
         }
         else if (hasResource)
         {
-            baseColor = resourceType switch
+            if (resourceType == "Comida")
             {
-                "Comida" => new Color(1f, 0.5f, 0.8f),
-                "Oro" => Color.yellow,
-                "Madera" => new Color(0.6f, 0.4f, 0.2f),
-                _ => Color.white
-            };
+                baseColor = new Color(1f, 0.5f, 0.8f);
+                hijoAActivar = Random.Range(1, 4); // hijos [1–3] = comida
+            }
+            else if (resourceType == "Oro")
+            {
+                baseColor = Color.yellow;
+            }
+            else if (resourceType == "Madera")
+            {
+                baseColor = new Color(0.6f, 0.4f, 0.2f);
+            }
+            else
+            {
+                baseColor = Color.white;
+            }
         }
         else if (!isWalkable)
         {
             baseColor = GameManager.Instance.obstacleColor;
+            hijoAActivar = Random.Range(4, 6); // hijos [4–5] = no caminable
         }
         else
         {
             baseColor = Color.Lerp(GameManager.Instance.walkableCellBorderColor, Color.black, GameManager.Instance.baseColorIntensity);
+            activarHierba = true;
         }
 
         baseColor.a = 1f;
@@ -104,5 +136,21 @@ public class CellData : MonoBehaviour
             sr.color = baseColor;
             originalColor = baseColor;
         }
+
+        // Activar hierba base si corresponde
+        if (activarHierba && transform.childCount > 0)
+        {
+            transform.GetChild(0).gameObject.SetActive(true);
+        }
+
+        // Activar decorado correspondiente
+        if (hijoAActivar >= 1 && hijoAActivar < transform.childCount)
+        {
+            transform.GetChild(hijoAActivar).gameObject.SetActive(true);
+        }
     }
+
+
+
+
 }

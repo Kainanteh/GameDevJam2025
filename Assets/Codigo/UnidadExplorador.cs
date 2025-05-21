@@ -11,7 +11,6 @@ public class UnidadExplorador : MonoBehaviour
     public CellData celdaActual;
 
     public int coste;
-
     public bool esperandoInput = false;
 
     public List<Vector3> caminoRecorrido = new List<Vector3>();
@@ -32,12 +31,13 @@ public class UnidadExplorador : MonoBehaviour
         if (label != null)
             label.text = $"E{coste}";
     }
-
-
     void Update()
     {
+        var orientador = transform.Find("GnomoSprite")?.GetComponent<SpriteOrientador>();
+
         if (t < 1f)
         {
+            orientador?.ActualizarDireccion(inicio, destino);
             t += Time.deltaTime * speed;
             t = Mathf.Clamp01(t);
             transform.position = Vector3.Lerp(inicio, destino, t);
@@ -58,7 +58,6 @@ public class UnidadExplorador : MonoBehaviour
                 return;
             }
 
-
             if (t >= 1f && !enTransicionARecolector)
             {
                 esperandoInput = true;
@@ -67,18 +66,15 @@ public class UnidadExplorador : MonoBehaviour
             return;
         }
 
-        if (esperandoInput)
+        if (esperandoInput && Input.GetMouseButton(0))
         {
-            if (Input.GetMouseButton(0))
-            {
-                Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                mouseWorld.z = 0;
+            Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            mouseWorld.z = 0;
 
-                if (Vector3.Distance(mouseWorld, transform.position) < 0.75f)
-                {
-                    GameManager.Instance.IniciarDesdeExplorador(this);
-                    esperandoInput = false;
-                }
+            if (Vector3.Distance(mouseWorld, transform.position) < 0.75f)
+            {
+                GameManager.Instance.IniciarDesdeExplorador(this);
+                esperandoInput = false;
             }
         }
 
@@ -88,20 +84,17 @@ public class UnidadExplorador : MonoBehaviour
             unidad.name = "Recolector";
 
             unidad.AddComponent<UnidadRecolector>().InitConCamino(
-              origen,
-              new List<Vector3>(caminoRecorrido),
-              recursoDestino,
-              null,
-              false
-          );
-
+                origen,
+                new List<Vector3>(caminoRecorrido),
+                recursoDestino,
+                null,
+                false
+            );
 
             Destroy(gameObject);
-            return;
         }
-
-
     }
+
 
     public void ConvertirSegunDestino(CellData targetCell)
     {
@@ -133,14 +126,7 @@ public class UnidadExplorador : MonoBehaviour
         GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
         PathVisual visual = pathGO.GetComponent<PathVisual>();
 
-        visual.Init(
-            transform.position,
-            recurso.transform.position,
-            null,
-            null,
-            GameManager.Instance.gridGenerator,
-            recurso
-        );
+        visual.Init(transform.position, recurso.transform.position, null, null, GameManager.Instance.gridGenerator, recurso);
         visual.isRecolectar = true;
 
         inicio = transform.position;
@@ -151,94 +137,15 @@ public class UnidadExplorador : MonoBehaviour
         enTransicionARecolector = true;
     }
 
-    /*
-    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
-    {
-        Vector3 puntoInicio = transform.position;
-        Vector3 puntoFinal = hqEnemigo.occupiedCells[0].transform.position;
-
-        caminoRecorrido = new List<Vector3> { puntoInicio, puntoFinal };
-
-        GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
-        PathVisual visual = pathGO.GetComponent<PathVisual>();
-
-        visual.Init(
-            puntoInicio,
-            puntoFinal,
-            null,
-            hqEnemigo,
-            GameManager.Instance.gridGenerator
-        );
-        visual.isRecolectar = false;
-
-        // Registro en el HQ el camino REAL que deben seguir los soldados
-        origen.RegisterActiveSoldado(
-            origen.occupiedCells[0].transform.position,
-            new List<Vector3>(caminoRecorrido),
-            hqEnemigo,
-            coste
-        );
-
-        // El explorador no se destruye ni genera unidades
-    }
-    */
-
-
-    /*
-    public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
-    {
-        caminoRecorrido.Add(hqEnemigo.occupiedCells[0].transform.position);
-
-        GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
-        PathVisual visual = pathGO.GetComponent<PathVisual>();
-        visual.Init(
-            transform.position,
-            hqEnemigo.occupiedCells[0].transform.position,
-            null,
-            hqEnemigo,
-            GameManager.Instance.gridGenerator
-        );
-        visual.isRecolectar = false;
-
-        // Eliminar comportamiento del explorador inmediatamente
-        UnidadExplorador thisExplorador = GetComponent<UnidadExplorador>();
-        Destroy(thisExplorador);
-
-        // Convertir en soldado y continuar
-        UnidadSoldado soldado = gameObject.AddComponent<UnidadSoldado>();
-        soldado.Init(
-            origen,
-            new List<Vector3>(caminoRecorrido),
-            hqEnemigo,
-            coste
-        );
-
-        origen.RegisterActiveSoldado(
-            origen.occupiedCells[0].transform.position,
-            new List<Vector3>(caminoRecorrido),
-            hqEnemigo,
-            coste
-        );
-    }
-    */
-    
-
     public void ConvertirseEnCaminoDeAtaque(Building hqEnemigo)
     {
         caminoRecorrido.Add(transform.position);
         caminoRecorrido.Add(hqEnemigo.occupiedCells[0].transform.position);
 
-
         GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
         PathVisual visual = pathGO.GetComponent<PathVisual>();
 
-        visual.Init(
-            transform.position,
-            hqEnemigo.occupiedCells[0].transform.position,
-            null,
-            hqEnemigo,
-            GameManager.Instance.gridGenerator
-        );
+        visual.Init(transform.position, hqEnemigo.occupiedCells[0].transform.position, null, hqEnemigo, GameManager.Instance.gridGenerator);
         visual.isRecolectar = false;
 
         origen.RegisterActiveSoldado(
@@ -248,21 +155,9 @@ public class UnidadExplorador : MonoBehaviour
             coste
         );
 
-        //Destroy(gameObject);
-        // En lugar de Destroy(gameObject), haz que continúe moviéndose al HQ enemigo
         inicio = transform.position;
         destino = hqEnemigo.occupiedCells[0].transform.position;
         t = 0f;
         esperandoInput = false;
-
-    }
-
-
-
-    void MostrarTexto()
-    {
-        var label = GetComponentInChildren<TMPro.TextMeshProUGUI>();
-        if (label != null)
-            label.text = coste.ToString();
     }
 }
