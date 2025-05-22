@@ -22,12 +22,47 @@ public class PathVisual : MonoBehaviour
         lr.SetPosition(1, end);
         lr.startWidth = 0.15f;
         lr.endWidth = 0.15f;
-        lr.startColor = Color.black;
-        lr.endColor = Color.black;
-        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = Color.white;
+        lr.endColor = Color.white;
+        lr.alignment = LineAlignment.TransformZ;
+        lr.textureMode = LineTextureMode.Tile;
+
+        Material caminoMaterial = Resources.Load<Material>("CaminoMaterial");
+        if (caminoMaterial == null)
+        {
+            Debug.LogError("❌ Material 'CaminoMaterial' no encontrado en Resources.");
+            return;
+        }
+
+        Vector2 dir = (end - start).normalized;
+        float angle = Mathf.Atan2(dir.y, dir.x);
+
+        // Corregir si es casi horizontal (|y| muy bajo)
+        if (Mathf.Abs(dir.y) < 0.8f)
+        {
+            float fuerza = 1.2f; // cuanto más alto, más inclinado (π/4 = 0.785, π/2 = 1.57)
+            angle += Mathf.Sign(dir.y == 0 ? 1 : dir.y) * fuerza;
+        }
+
+
+        caminoMaterial = new Material(caminoMaterial); // evitar que se modifique globalmente
+        caminoMaterial.SetFloat("_Rotation", angle);
+        lr.material = caminoMaterial;
+
+        float distancia = Vector3.Distance(start, end);
+        float ppu = 100f;
+        float texturaAltoEnUnidades = caminoMaterial.mainTexture != null ? caminoMaterial.mainTexture.height / ppu : 1f;
+        float tiles = distancia / texturaAltoEnUnidades;
+
+        // Obtener cuánto se estira el eje de textura tras la rotación
+        float sin = Mathf.Abs(Mathf.Sin(angle));
+        float cos = Mathf.Abs(Mathf.Cos(angle));
+        float escalaY = sin > cos ? sin : cos;
+
+        lr.material.mainTextureScale = new Vector2(tiles, escalaY);
+
 
         affectedCells = GetCellsBetween(start, end, grid);
-
         originBuilding = origin;
         targetBuilding = target;
 
@@ -39,16 +74,17 @@ public class PathVisual : MonoBehaviour
         }
         else if (targetCell != null)
         {
-            if (targetCell.hasResource)
-                targetName = $"{targetCell.coordinates} {targetCell.resourceType}";
-            else
-                targetName = $"{targetCell.coordinates}";
+            targetName = targetCell.hasResource
+                ? $"{targetCell.coordinates} {targetCell.resourceType}"
+                : $"{targetCell.coordinates}";
         }
         else
         {
             targetName = "Sin destino";
         }
     }
+
+
     public void Init(List<Vector3> puntos, Building origin, Building target, GridGenerator grid, CellData targetCell = null)
     {
         LineRenderer lr = GetComponent<LineRenderer>();
