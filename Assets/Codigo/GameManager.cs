@@ -45,6 +45,32 @@ public class GameManager : MonoBehaviour
     public UnidadExplorador exploradorSeleccionado = null;
     public int UltimoAtacanteOwnerId = -1;
 
+    public Transform contenedorCaminos;
+    public GameObject prefabBotonCamino;
+
+    // GameManager.cs
+    public void MostrarBotonCancelar(CaminoActivo camino, HeadquartersBuilding hq)
+    {
+        foreach (Transform child in contenedorCaminos)
+            Destroy(child.gameObject);
+
+        GameObject botonGO = Instantiate(prefabBotonCamino, contenedorCaminos);
+        UICaminoBoton script = botonGO.GetComponent<UICaminoBoton>();
+
+        if (camino.tramos.Count > 0 && camino.tramos[0] != null)
+        {
+            GameObject visualGO = camino.tramos[0].gameObject;
+            script.Init(camino, hq); // ✅ llamado correcto según el método actual
+        }
+        else
+        {
+            script.Init(camino, hq);
+        }
+
+    }
+
+
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -77,12 +103,34 @@ public class GameManager : MonoBehaviour
             {
                 DetectCellClick();
                 StartPathAction();
+
+                // 👇 Nuevo: detectar clic en camino
+                DetectPathClick();
             }
         }
 
         if (Input.GetMouseButtonUp(0))
         {
             EndPathAction();
+        }
+    }
+    void DetectPathClick()
+    {
+        Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        RaycastHit2D hit = Physics2D.Raycast(mouseWorld, Vector2.zero);
+
+        if (hit.collider != null)
+        {
+            PathVisual path = hit.collider.GetComponent<PathVisual>();
+            if (path != null && path.originBuilding is HeadquartersBuilding hq && hq.ownerId == 0)
+            {
+                CaminoActivo camino = hq.GetCaminosActivos().Find(c => c.tramos.Contains(path));
+                if (camino != null)
+                {
+                    Debug.Log("✅ Clic detectado sobre camino (PathVisual)");
+                    MostrarBotonCancelar(camino, hq);
+                }
+            }
         }
     }
 
@@ -174,7 +222,6 @@ public class GameManager : MonoBehaviour
 
 
     // Dentro de GameManager.cs
-
     public void CreatePathVisual(CellData fromCell, CellData toCell, bool isRecolectar)
     {
         if (pathLinePrefab == null || unidadPrefab == null) return;
@@ -219,8 +266,6 @@ public class GameManager : MonoBehaviour
             to = toPos;
         }
 
-        visual.Init(from, to, fromBuilding, toCell.building, gridGenerator, toCell);
-
         TipoCamino tipo = isRecolectar ? TipoCamino.Recolectar :
             (toCell.building != null && toCell.building.isHeadquarters && toCell.building.ownerId != 0)
             ? TipoCamino.Ataque : TipoCamino.Exploracion;
@@ -241,11 +286,19 @@ public class GameManager : MonoBehaviour
             }
             else if (tipo == TipoCamino.Exploracion)
             {
+                visual.Init(from, to, fromBuilding, null, gridGenerator, toCell);
+
                 GameObject unidad = Instantiate(unidadPrefab, from, Quaternion.identity);
                 unidad.name = "Explorador";
 
                 var comp = unidad.AddComponent<UnidadExplorador>();
                 comp.Init(hq, from, to, toCell, 1);
+
+                CaminoActivo caminoActivo = new CaminoActivo(false, false, null, toCell);
+                caminoActivo.tramos.Add(visual);
+                caminoActivo.tramosParent = pathGO;
+                caminoActivo.unidadesVinculadas.Add(unidad);
+                hq.GetCaminosActivos().Add(caminoActivo);
             }
         }
         else if (GameManager.Instance.exploradorSeleccionado != null)
@@ -258,7 +311,6 @@ public class GameManager : MonoBehaviour
             exploradorSeleccionado.esperandoInput = false;
             exploradorSeleccionado.caminoRecorrido.Add(toCell.transform.position);
             exploradorSeleccionado = null;
-
         }
     }
 

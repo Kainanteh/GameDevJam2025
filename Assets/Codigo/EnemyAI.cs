@@ -76,6 +76,7 @@ public class EnemyAI : MonoBehaviour
         List<Vector3> camino = new List<Vector3> { desde, hasta };
         enemyHQ.RegisterActiveSoldado(desde, camino, fuerteNeutral, 1);
 
-        Debug.Log("🤖 IA enemiga ha lanzado un ataque al fuerte neutral");
+        
+        //Debug.Log("🤖 IA enemiga ha lanzado un ataque al fuerte neutral");
     }
 }

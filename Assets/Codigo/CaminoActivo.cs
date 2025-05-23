@@ -1,15 +1,20 @@
-﻿using System.Collections.Generic;
+﻿// CaminoActivo.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 public class CaminoActivo
 {
     public List<PathVisual> tramos = new();
+    public GameObject tramosParent;
+
     public bool isRecolectar;
     public bool isAtaque;
     public Building objetivo;
     public CellData celdaRecurso;
 
     public bool esRefuerzoPasivo = false;
+
+    public List<GameObject> unidadesVinculadas = new(); // ✅ se añaden aquí las unidades que usan este camino
 
     public CaminoActivo(bool isRecolectar, bool isAtaque, Building objetivo, CellData celdaRecurso)
     {

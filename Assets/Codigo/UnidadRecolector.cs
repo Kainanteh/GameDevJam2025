@@ -24,6 +24,8 @@ public class UnidadRecolector : MonoBehaviour
         this.caminoAsociado = caminoAsociado;
 
         transform.position = empezarEnInicio ? camino[0] : camino[camino.Count - 1];
+        // UnidadRecolector.cs → dentro de InitConCamino
+        caminoAsociado.unidadesVinculadas.Add(gameObject);
 
         SetupLabel();
         StartCoroutine(RutinaCicloRecolector());

@@ -239,7 +239,7 @@ public class HeadquartersBuilding : Building
         soldierCount -= daño;
         if (soldierCount < 0) soldierCount = 0;
         UpdateLabel();
-        Debug.Log($"💥 HQ {buildingName} recibe {daño} de daño");
+        //Debug.Log($"💥 HQ {buildingName} recibe {daño} de daño");
 
         if (soldierCount == 0)
         {

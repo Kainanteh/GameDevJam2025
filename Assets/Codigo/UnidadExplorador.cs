@@ -83,13 +83,26 @@ public class UnidadExplorador : MonoBehaviour
             GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, transform.position, Quaternion.identity);
             unidad.name = "Recolector";
 
+            CaminoActivo camino = new CaminoActivo(true, false, null, recursoDestino);
+            camino.unidadesVinculadas.Add(unidad);
+
+            GameObject pathGO = Object.Instantiate(GameManager.Instance.pathLinePrefab);
+            PathVisual visual = pathGO.GetComponent<PathVisual>();
+            visual.Init(inicio, destino, origen, null, GameManager.Instance.gridGenerator, recursoDestino);
+            visual.isRecolectar = true;
+
+            camino.tramos.Add(visual);
+            camino.tramosParent = pathGO;
+            origen.GetCaminosActivos().Add(camino);
+
             unidad.AddComponent<UnidadRecolector>().InitConCamino(
                 origen,
                 new List<Vector3>(caminoRecorrido),
                 recursoDestino,
-                null,
+                camino,
                 false
             );
+
 
             Destroy(gameObject);
         }

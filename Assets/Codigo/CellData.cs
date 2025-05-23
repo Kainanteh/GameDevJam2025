@@ -88,11 +88,12 @@ public class CellData : MonoBehaviour
                 }
                 else
                 {
-                    // Mostrar HQ (2x2) solo en la celda inferior izquierda
-                    Vector2Int minCoord = hq.GetCeldaInferiorIzquierda();
-                    if (coordinates == minCoord)
+                    // Mostrar HQ grande solo si ocupa 4 celdas
+                    if (hq.occupiedCells.Count >= 4)
                     {
-                        hijoAActivar = 7; // HQ
+                        Vector2Int minCoord = hq.GetCeldaInferiorIzquierda();
+                        if (coordinates == minCoord)
+                            hijoAActivar = 7; // HQ grande
                     }
                 }
             }
@@ -137,18 +138,14 @@ public class CellData : MonoBehaviour
             originalColor = baseColor;
         }
 
-        // Activar hierba base si corresponde
         if (activarHierba && transform.childCount > 0)
-        {
             transform.GetChild(0).gameObject.SetActive(true);
-        }
 
-        // Activar decorado correspondiente
         if (hijoAActivar >= 1 && hijoAActivar < transform.childCount)
-        {
             transform.GetChild(hijoAActivar).gameObject.SetActive(true);
-        }
     }
+
+
 
 
 

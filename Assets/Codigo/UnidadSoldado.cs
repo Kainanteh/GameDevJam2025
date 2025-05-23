@@ -26,8 +26,11 @@ public class UnidadSoldado : MonoBehaviour
         var label = GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
         if (label != null)
             label.text = $"S{daño}";
+        // UnidadSoldado.cs → dentro de Init
+        caminoAsociado.unidadesVinculadas.Add(gameObject);
 
         StartCoroutine(RutinaAvanzarYAtacar());
+
     }
 
     IEnumerator RutinaAvanzarYAtacar()
@@ -49,7 +52,7 @@ public class UnidadSoldado : MonoBehaviour
             {
                 GameManager.Instance.UltimoAtacanteOwnerId = origenHQ.ownerId;
                 objetivo.RecibirDaño(daño);
-                Debug.Log($"⚔️ Soldado impacta al HQ enemigo y causa {daño} de daño");
+               // Debug.Log($"⚔️ Soldado impacta al HQ enemigo y causa {daño} de daño");
             }
         }
 

@@ -12,6 +12,8 @@ public class PathVisual : MonoBehaviour
     public List<CellData> affectedCells = new List<CellData>();
     public bool isRecolectar = false;
 
+
+
     public void Init(Vector3 start, Vector3 end, Building origin, Building target, GridGenerator grid, CellData targetCell = null)
     {
         LineRenderer lr = GetComponent<LineRenderer>();
@@ -37,15 +39,13 @@ public class PathVisual : MonoBehaviour
         Vector2 dir = (end - start).normalized;
         float angle = Mathf.Atan2(dir.y, dir.x);
 
-        // Corregir si es casi horizontal (|y| muy bajo)
         if (Mathf.Abs(dir.y) < 0.8f)
         {
-            float fuerza = 1.2f; // cuanto más alto, más inclinado (π/4 = 0.785, π/2 = 1.57)
+            float fuerza = 1.2f;
             angle += Mathf.Sign(dir.y == 0 ? 1 : dir.y) * fuerza;
         }
 
-
-        caminoMaterial = new Material(caminoMaterial); // evitar que se modifique globalmente
+        caminoMaterial = new Material(caminoMaterial);
         caminoMaterial.SetFloat("_Rotation", angle);
         lr.material = caminoMaterial;
 
@@ -54,13 +54,11 @@ public class PathVisual : MonoBehaviour
         float texturaAltoEnUnidades = caminoMaterial.mainTexture != null ? caminoMaterial.mainTexture.height / ppu : 1f;
         float tiles = distancia / texturaAltoEnUnidades;
 
-        // Obtener cuánto se estira el eje de textura tras la rotación
         float sin = Mathf.Abs(Mathf.Sin(angle));
         float cos = Mathf.Abs(Mathf.Cos(angle));
         float escalaY = sin > cos ? sin : cos;
 
         lr.material.mainTextureScale = new Vector2(tiles, escalaY);
-
 
         affectedCells = GetCellsBetween(start, end, grid);
         originBuilding = origin;
@@ -82,7 +80,75 @@ public class PathVisual : MonoBehaviour
         {
             targetName = "Sin destino";
         }
+
+        // ✅ Collider ajustado y rotado perfectamente
+        BoxCollider2D col = GetComponent<BoxCollider2D>();
+        if (col == null)
+        {
+            col = gameObject.AddComponent<BoxCollider2D>();
+        }
+        col.isTrigger = true;
+
+        Vector3 direccion = (end - start);
+        float largo = direccion.magnitude;
+        Vector3 centro = (start + end) * 0.5f;
+        float rotZ = Mathf.Atan2(direccion.y, direccion.x) * Mathf.Rad2Deg;
+
+        col.size = new Vector2(largo, 0.3f);
+        col.offset = Quaternion.Euler(0, 0, -rotZ) * (centro - transform.position);
+        col.transform.rotation = Quaternion.Euler(0, 0, rotZ);
+        SpriteRenderer sr = GetComponent<SpriteRenderer>();
+        if (sr == null)
+        {
+            sr = gameObject.AddComponent<SpriteRenderer>();
+            sr.color = new Color(1, 1, 1, 0); // completamente transparente
+            GetComponent<SpriteRenderer>().sortingOrder = 1000;
+
+        }
+
     }
+
+
+    void OnMouseDown()
+    {
+        if (originBuilding is not HeadquartersBuilding hq || hq.ownerId != 0)
+            return;
+
+        LineRenderer myLR = GetComponent<LineRenderer>();
+        if (myLR == null) return;
+
+        Vector3 myStart = myLR.GetPosition(0);
+        Vector3 myEnd = myLR.GetPosition(1);
+
+        foreach (var camino in hq.GetCaminosActivos())
+        {
+            foreach (var tramo in camino.tramos)
+            {
+                if (tramo == null) continue;
+
+                LineRenderer lr = tramo.GetComponent<LineRenderer>();
+                if (lr == null) continue;
+
+                Vector3 start = lr.GetPosition(0);
+                Vector3 end = lr.GetPosition(1);
+
+                if ((start == myStart && end == myEnd) || (start == myEnd && end == myStart))
+                {
+                    Debug.Log("✅ PathVisual.cs: clic recibido por comparación de puntos");
+                    GameManager.Instance.MostrarBotonCancelar(camino, hq);
+                    return;
+                }
+            }
+        }
+
+        Debug.LogWarning("❌ No se encontró un camino que coincida por posiciones");
+    }
+
+
+
+
+
+
 
 
     public void Init(List<Vector3> puntos, Building origin, Building target, GridGenerator grid, CellData targetCell = null)
