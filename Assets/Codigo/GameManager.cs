@@ -48,6 +48,11 @@ public class GameManager : MonoBehaviour
     public Transform contenedorCaminos;
     public GameObject prefabBotonCamino;
 
+    public Color neutralFuerteColor = Color.gray;
+    public Color disputaFuerteColor = new Color(0.6f, 0f, 0.8f); // púrpura
+
+
+
     // GameManager.cs
     public void MostrarBotonCancelar(CaminoActivo camino, HeadquartersBuilding hq)
     {
@@ -221,7 +226,6 @@ public class GameManager : MonoBehaviour
     }
 
 
-    // Dentro de GameManager.cs
     public void CreatePathVisual(CellData fromCell, CellData toCell, bool isRecolectar)
     {
         if (pathLinePrefab == null || unidadPrefab == null) return;
@@ -231,8 +235,7 @@ public class GameManager : MonoBehaviour
         if (visual == null) return;
 
         Building fromBuilding = fromCell.building;
-
-        bool esDesdeExplorador = GameManager.Instance.exploradorSeleccionado != null;
+        bool esDesdeExplorador = exploradorSeleccionado != null;
 
         Vector3 from;
         Vector3 to;
@@ -272,36 +275,53 @@ public class GameManager : MonoBehaviour
 
         visual.isRecolectar = (tipo == TipoCamino.Recolectar);
 
-        if (fromBuilding is HeadquartersBuilding hq)
+        List<Vector3> camino = new List<Vector3> { from, to };
+
+        if (tipo == TipoCamino.Recolectar && fromBuilding is HeadquartersBuilding hqRecolector)
         {
-            List<Vector3> camino = new List<Vector3> { from, to };
+            hqRecolector.RegisterActiveRecolector(from, camino, toCell);
+        }
+        else if (tipo == TipoCamino.Ataque && fromBuilding is HeadquartersBuilding hqAtacante)
+        {
+            hqAtacante.RegisterActiveSoldado(from, camino, toCell.building, 1);
+        }
+        else if (tipo == TipoCamino.Exploracion)
+        {
+            visual.Init(from, to, fromBuilding, null, gridGenerator, toCell);
 
-            if (tipo == TipoCamino.Recolectar)
+            if (exploradorSeleccionado == null)
             {
-                hq.RegisterActiveRecolector(from, camino, toCell);
-            }
-            else if (tipo == TipoCamino.Ataque)
-            {
-                hq.RegisterActiveSoldado(from, camino, toCell.building, 1);
-            }
-            else if (tipo == TipoCamino.Exploracion)
-            {
-                visual.Init(from, to, fromBuilding, null, gridGenerator, toCell);
-
                 GameObject unidad = Instantiate(unidadPrefab, from, Quaternion.identity);
                 unidad.name = "Explorador";
 
                 var comp = unidad.AddComponent<UnidadExplorador>();
-                comp.Init(hq, from, to, toCell, 1);
+                comp.Init(fromBuilding as HeadquartersBuilding, from, to, toCell, 1);
+                comp.AgregarTramo(visual);
+                exploradorSeleccionado = comp;
 
                 CaminoActivo caminoActivo = new CaminoActivo(false, false, null, toCell);
                 caminoActivo.tramos.Add(visual);
                 caminoActivo.tramosParent = pathGO;
                 caminoActivo.unidadesVinculadas.Add(unidad);
-                hq.GetCaminosActivos().Add(caminoActivo);
+
+                if (fromBuilding is HeadquartersBuilding hq)
+                    hq.GetCaminosActivos().Add(caminoActivo);
+            }
+            else
+            {
+                exploradorSeleccionado.caminoRecorrido.Add(to);
+                exploradorSeleccionado.AgregarTramo(visual);
+
+                if (exploradorSeleccionado.origen != null)
+                {
+                    var caminoActivo = exploradorSeleccionado.origen.GetCaminosActivos()
+                        .Find(c => c.unidadesVinculadas.Contains(exploradorSeleccionado.gameObject));
+                    if (caminoActivo != null)
+                        caminoActivo.tramos.Add(visual);
+                }
             }
         }
-        else if (GameManager.Instance.exploradorSeleccionado != null)
+        else if (exploradorSeleccionado != null)
         {
             exploradorSeleccionado.inicio = exploradorSeleccionado.transform.position;
             exploradorSeleccionado.destino = toCell.transform.position;
@@ -313,6 +333,7 @@ public class GameManager : MonoBehaviour
             exploradorSeleccionado = null;
         }
     }
+
 
 
     Vector3 GetEdgeExitPoint(Building from, Building to)
@@ -427,14 +448,13 @@ public class GameManager : MonoBehaviour
         selectedCells.Clear();
     }
 
-
     public void PlaceTestBuilding()
     {
         HeadquartersBuilding playerHQ = new HeadquartersBuilding("Cuartel Azul", 0);
         Vector2Int[] playerPositions = new Vector2Int[]
         {
-            new Vector2Int(1, 1), new Vector2Int(1, 2),
-            new Vector2Int(2, 1), new Vector2Int(2, 2)
+        new Vector2Int(1, 1), new Vector2Int(1, 2),
+        new Vector2Int(2, 1), new Vector2Int(2, 2)
         };
 
         foreach (var pos in playerPositions)
@@ -451,14 +471,17 @@ public class GameManager : MonoBehaviour
 
         playerHQ.FinalizeSetup();
 
+        foreach (var cell in playerHQ.occupiedCells)
+            cell.ApplyDebugColor(); // ✅ pinta HQ jugador
+
         HeadquartersBuilding enemyHQ = new HeadquartersBuilding("Cuartel Rojo", 1);
         int maxX = gridGenerator.width - 1;
         int maxY = gridGenerator.height - 1;
 
         Vector2Int[] enemyPositions = new Vector2Int[]
         {
-            new Vector2Int(maxX - 2, maxY - 2), new Vector2Int(maxX - 2, maxY - 1),
-            new Vector2Int(maxX - 1, maxY - 2), new Vector2Int(maxX - 1, maxY - 1)
+        new Vector2Int(maxX - 2, maxY - 2), new Vector2Int(maxX - 2, maxY - 1),
+        new Vector2Int(maxX - 1, maxY - 2), new Vector2Int(maxX - 1, maxY - 1)
         };
 
         foreach (var pos in enemyPositions)
@@ -475,6 +498,8 @@ public class GameManager : MonoBehaviour
 
         enemyHQ.FinalizeSetup();
 
+        foreach (var cell in enemyHQ.occupiedCells)
+            cell.ApplyDebugColor(); // ✅ pinta HQ enemigo
 
         CellData celdaComida = gridGenerator.GetCellAt(1, 7);
         if (celdaComida != null)
@@ -483,15 +508,12 @@ public class GameManager : MonoBehaviour
             celdaComida.resourceType = "Comida";
             celdaComida.resourceAmount = 1;
             celdaComida.ApplyDebugColor();
-
-
         }
-
 
         Vector2Int[] obstaculos = new Vector2Int[]
         {
-            new Vector2Int(4, 4), new Vector2Int(4, 5),
-            new Vector2Int(5, 4), new Vector2Int(5, 5)
+        new Vector2Int(4, 4), new Vector2Int(4, 5),
+        new Vector2Int(5, 4), new Vector2Int(5, 5)
         };
 
         foreach (var pos in obstaculos)
@@ -500,7 +522,7 @@ public class GameManager : MonoBehaviour
             if (cell != null)
             {
                 cell.isWalkable = false;
-                cell.ApplyDebugColor(); // para que se vea
+                cell.ApplyDebugColor();
             }
         }
 
@@ -514,10 +536,14 @@ public class GameManager : MonoBehaviour
             celdaFuerte.hasResource = false;
             fuerteNeutral.occupiedCells.Add(celdaFuerte);
         }
+
         fuerteNeutral.soldierCount = 5;
         fuerteNeutral.FinalizeSetup();
 
-
-
+        foreach (var cell in fuerteNeutral.occupiedCells)
+            cell.ApplyDebugColor(); // ✅ pinta fuerte neutral
     }
+
+
+
 }

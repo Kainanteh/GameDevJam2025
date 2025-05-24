@@ -32,14 +32,24 @@ public class HeadquartersBuilding : Building
         }
     }
 
-
     public void Tick(float deltaTime)
     {
-        foreach (var camino in caminosActivos)
+        for (int i = caminosActivos.Count - 1; i >= 0; i--)
         {
+            var camino = caminosActivos[i];
+
+            if (camino.tramos.Count == 0 || camino.tramos[0] == null || camino.tramos[^1] == null)
+                continue;
+
+            LineRenderer lrStart = camino.tramos[0].GetComponent<LineRenderer>();
+            LineRenderer lrEnd = camino.tramos[^1].GetComponent<LineRenderer>();
+
+            if (lrStart == null || lrEnd == null)
+                continue;
+
             var key = (
-                camino.tramos[0].transform.GetComponent<LineRenderer>().GetPosition(0),
-                camino.tramos[^1].transform.GetComponent<LineRenderer>().GetPosition(1)
+                lrStart.GetPosition(0),
+                lrEnd.GetPosition(1)
             );
 
             if (!ataqueTimers.ContainsKey(key))
@@ -62,7 +72,10 @@ public class HeadquartersBuilding : Building
                         List<Vector3> puntos = new();
                         foreach (var tramo in camino.tramos)
                         {
+                            if (tramo == null) continue;
                             LineRenderer lr = tramo.GetComponent<LineRenderer>();
+                            if (lr == null) continue;
+
                             if (puntos.Count == 0)
                                 puntos.Add(lr.GetPosition(0));
                             puntos.Add(lr.GetPosition(1));
@@ -101,6 +114,7 @@ public class HeadquartersBuilding : Building
         if (ownerId == 11)
             EvaluarResolucionDisputa();
     }
+
 
     public Vector2Int GetCeldaInferiorIzquierda()
     {

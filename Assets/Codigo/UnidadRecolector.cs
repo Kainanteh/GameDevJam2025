@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public class UnidadRecolector : MonoBehaviour
 {
-    private HeadquartersBuilding origenHQ;
+    public HeadquartersBuilding origenHQ;
     private List<Vector3> camino = new();
     private float speed = 2f;
     private bool yaSumado = false;
@@ -14,22 +14,32 @@ public class UnidadRecolector : MonoBehaviour
     private int coste = 1;
     public CaminoActivo caminoAsociado;
 
-    public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso, CaminoActivo caminoAsociado, bool empezarEnInicio = true)
+    private int startIndex = 0; // al inicio de la clase
+
+    public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso, CaminoActivo caminoAsociado, int startIndex)
     {
         this.origenHQ = origenHQ;
         this.celdaRecurso = celdaRecurso;
         this.camino = new List<Vector3>(caminoCompleto);
-        this.empiezaDesdeRecurso = !empezarEnInicio;
-        this.coste = 1;
         this.caminoAsociado = caminoAsociado;
+        this.startIndex = startIndex;
+        this.yaSumado = false;
 
-        transform.position = empezarEnInicio ? camino[0] : camino[camino.Count - 1];
-        // UnidadRecolector.cs → dentro de InitConCamino
+        transform.position = camino[startIndex];
+
         caminoAsociado.unidadesVinculadas.Add(gameObject);
+
+
 
         SetupLabel();
         StartCoroutine(RutinaCicloRecolector());
     }
+    // Para mantener compatibilidad con llamadas antiguas (como desde LaunchRecolector)
+    public void InitConCamino(HeadquartersBuilding origenHQ, List<Vector3> caminoCompleto, CellData celdaRecurso, CaminoActivo caminoAsociado)
+    {
+        InitConCamino(origenHQ, caminoCompleto, celdaRecurso, caminoAsociado, 0); // default desde el inicio
+    }
+
 
     void SetupLabel()
     {
@@ -47,7 +57,7 @@ public class UnidadRecolector : MonoBehaviour
         {
             if (!haLlegadoAlRecurso)
             {
-                for (int i = 1; i < camino.Count; i++)
+                for (int i = startIndex + 1; i < camino.Count; i++)
                     yield return MoverA(camino[i], orientador);
 
                 haLlegadoAlRecurso = true;
@@ -72,6 +82,7 @@ public class UnidadRecolector : MonoBehaviour
         }
     }
 
+
     IEnumerator MoverA(Vector3 objetivo, SpriteOrientador _ = null)
     {
         var orientador = transform.Find("GnomoSprite")?.GetComponent<SpriteOrientador>();
@@ -79,6 +90,8 @@ public class UnidadRecolector : MonoBehaviour
         while (Vector3.Distance(transform.position, objetivo) > 0.05f)
         {
             orientador?.ActualizarDireccion(transform.position, objetivo);
+        
+
             transform.position = Vector3.MoveTowards(transform.position, objetivo, speed * Time.deltaTime);
 
             Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
@@ -94,5 +107,6 @@ public class UnidadRecolector : MonoBehaviour
             yield return null;
         }
     }
+
 
 }

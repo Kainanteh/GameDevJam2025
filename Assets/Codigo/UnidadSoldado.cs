@@ -20,18 +20,62 @@ public class UnidadSoldado : MonoBehaviour
         this.daño = daño;
         this.caminoAsociado = caminoAsociado;
 
-        if (camino.Count > 0)
+        // ✅ solo Soldado33 aparece en su posición actual (celda vacía del explorador)
+        if (gameObject.name != "Soldado33" && camino.Count > 0)
             transform.position = camino[0];
 
         var label = GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
         if (label != null)
             label.text = $"S{daño}";
-        // UnidadSoldado.cs → dentro de Init
+
         caminoAsociado.unidadesVinculadas.Add(gameObject);
 
-        StartCoroutine(RutinaAvanzarYAtacar());
-
+        if (gameObject.name == "Soldado33")
+        {
+            // solo hace el último tramo directamente
+            StartCoroutine(MoverSoloUltimoTramo(camino[^1]));
+        }
+        else
+        {
+            StartCoroutine(RutinaAvanzarYAtacar());
+        }
     }
+
+    private IEnumerator MoverSoloUltimoTramo(Vector3 destino)
+    {
+        var orientador = transform.Find("GnomoSprite")?.GetComponent<SpriteOrientador>();
+
+        while (Vector3.Distance(transform.position, destino) > 0.05f)
+        {
+            orientador?.ActualizarDireccion(transform.position, destino);
+            transform.position = Vector3.MoveTowards(transform.position, destino, 2f * Time.deltaTime);
+
+            Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
+            var cell = GameManager.Instance.gridGenerator.GetCellAt(gridPos.x, gridPos.y);
+
+            if (cell != null && !cell.isWalkable)
+            {
+                Debug.Log($"☠️ Soldado33 murió en obstáculo en {gridPos}");
+                Destroy(gameObject);
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        if (hqObjetivo is HeadquartersBuilding objetivo)
+        {
+            if (objetivo.ownerId != origenHQ?.ownerId && !caminoAsociado.esRefuerzoPasivo)
+            {
+                GameManager.Instance.UltimoAtacanteOwnerId = origenHQ.ownerId;
+                objetivo.RecibirDaño(daño);
+            }
+        }
+
+        Destroy(gameObject);
+    }
+
+
 
     IEnumerator RutinaAvanzarYAtacar()
     {
@@ -52,7 +96,6 @@ public class UnidadSoldado : MonoBehaviour
             {
                 GameManager.Instance.UltimoAtacanteOwnerId = origenHQ.ownerId;
                 objetivo.RecibirDaño(daño);
-               // Debug.Log($"⚔️ Soldado impacta al HQ enemigo y causa {daño} de daño");
             }
         }
 
@@ -66,6 +109,8 @@ public class UnidadSoldado : MonoBehaviour
         while (Vector3.Distance(transform.position, objetivo) > 0.05f)
         {
             orientador?.ActualizarDireccion(transform.position, objetivo);
+    
+
             transform.position = Vector3.MoveTowards(transform.position, objetivo, speed * Time.deltaTime);
 
             Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));

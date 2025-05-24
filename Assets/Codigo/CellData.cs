@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 
 public class CellData : MonoBehaviour
@@ -68,6 +68,46 @@ public class CellData : MonoBehaviour
         if (label != null)
             label.enabled = visible;
     }
+    public void AplicarColorHQ()
+    {
+        Color colorFinal = Color.white;
+
+        if (!(building is HeadquartersBuilding hq))
+            return;
+
+        if (hq.ownerId == 11)
+            colorFinal = GameManager.Instance.disputaFuerteColor;
+        else if (hq.IsFuerteNeutral())
+            colorFinal = GameManager.Instance.neutralFuerteColor;
+        else
+            colorFinal = GameManager.Instance.GetOwnerColor(hq.ownerId);
+
+        // Aplicar a overlay del HQ
+        var hqOverlay = transform.Find("cellhq/colorlhq");
+        if (hqOverlay != null)
+        {
+            var sr = hqOverlay.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.color = colorFinal;
+        }
+
+        // Aplicar a overlay del Fuerte
+        var fuerteOverlay = transform.Find("cellfuerte/colorfuerte");
+        if (fuerteOverlay != null)
+        {
+            var sr = fuerteOverlay.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.color = colorFinal;
+        }
+
+        // Fuerte: también pintar fondo Square
+        if (hq.IsFuerteNeutral() || hq.ownerId == 11 || hq.ownerId >= 0)
+        {
+            var fondo = transform.Find("Square")?.GetComponent<SpriteRenderer>();
+            if (fondo != null) fondo.color = colorFinal;
+        }
+    }
+
+
+
 
 
     public void ApplyDebugColor()
@@ -88,7 +128,6 @@ public class CellData : MonoBehaviour
                 }
                 else
                 {
-                    // Mostrar HQ grande solo si ocupa 4 celdas
                     if (hq.occupiedCells.Count >= 4)
                     {
                         Vector2Int minCoord = hq.GetCeldaInferiorIzquierda();
@@ -96,6 +135,8 @@ public class CellData : MonoBehaviour
                             hijoAActivar = 7; // HQ grande
                     }
                 }
+
+                AplicarColorHQ(); // ✅ aplicar color al overlay del HQ
             }
         }
         else if (hasResource)
@@ -103,7 +144,7 @@ public class CellData : MonoBehaviour
             if (resourceType == "Comida")
             {
                 baseColor = new Color(1f, 0.5f, 0.8f);
-                hijoAActivar = Random.Range(1, 4); // hijos [1�3] = comida
+                hijoAActivar = Random.Range(1, 4); // hijos [1–3] = comida
             }
             else if (resourceType == "Oro")
             {
@@ -121,7 +162,7 @@ public class CellData : MonoBehaviour
         else if (!isWalkable)
         {
             baseColor = GameManager.Instance.obstacleColor;
-            hijoAActivar = Random.Range(4, 6); // hijos [4�5] = no caminable
+            hijoAActivar = Random.Range(4, 6); // hijos [4–5] = no caminable
         }
         else
         {
