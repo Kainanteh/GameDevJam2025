@@ -253,25 +253,56 @@ public class HeadquartersBuilding : Building
         soldierCount -= daño;
         if (soldierCount < 0) soldierCount = 0;
         UpdateLabel();
-        //Debug.Log($"💥 HQ {buildingName} recibe {daño} de daño");
 
         if (soldierCount == 0)
         {
+            generationRate = 0;
+
             if (ownerId == 0)
             {
                 Debug.Log("❌ El jugador ha perdido su cuartel principal.");
+                GameManager.Instance.MostrarMensajeResultado("DERROTA");
+                GameManager.Instance.IniciarTransicionEscena("Menu", 3f);
             }
             else if (ownerId > 0 && ownerId < 10)
             {
                 Debug.Log($"✅ HQ enemigo {buildingName} ha sido destruido.");
+
+                bool quedanEnemigos = false;
+                foreach (var cell in GameManager.Instance.gridGenerator.allCells.Values)
+                {
+                    if (cell.building is HeadquartersBuilding hq)
+                    {
+                        if (hq.ownerId > 0 && hq.ownerId < 10 && hq != this && hq.soldierCount > 0)
+                        {
+                            quedanEnemigos = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!quedanEnemigos)
+                {
+                    GameManager.Instance.MostrarMensajeResultado("VICTORIA");
+
+                    string actual = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                    if (actual == "Pantalla3")
+                        GameManager.Instance.IniciarTransicionEscena("Menu", 3f);
+                    else
+                        GameManager.Instance.IrASiguientePantalla(3f);
+                }
+
             }
         }
+
 
         if (fueFuerteNeutral && soldierCount == 0)
         {
             ConquistarFuerte();
         }
     }
+
+
 
 
     private void ConquistarFuerte()
@@ -373,6 +404,7 @@ public class HeadquartersBuilding : Building
     public void EvaluarResolucionDisputa()
     {
         if (ownerId != 11) return;
+
         int presionJugador = 0;
         int presionEnemigo = 0;
 
@@ -384,8 +416,11 @@ public class HeadquartersBuilding : Building
                 {
                     if (!camino.isAtaque || camino.esRefuerzoPasivo) continue;
                     if (camino.objetivo != this) continue;
-                    if (origenHQ.ownerId == 0) presionJugador++;
-                    else if (origenHQ.ownerId > 0 && origenHQ.ownerId < 10) presionEnemigo++;
+
+                    if (origenHQ.ownerId == 0)
+                        presionJugador++;
+                    else if (origenHQ.ownerId == 1)
+                        presionEnemigo++;
                 }
             }
         }
@@ -393,27 +428,28 @@ public class HeadquartersBuilding : Building
         if (presionJugador == 0 && presionEnemigo == 0) return;
         if (presionJugador == presionEnemigo) return;
 
-        int ganador = (presionJugador > presionEnemigo) ? 0 : GameManager.Instance.UltimoAtacanteOwnerId;
+        int ganador = (presionJugador > presionEnemigo) ? 0 : 1;
 
         ownerId = ganador;
         type = BuildingType.Headquarters;
         buildingName = $"Cuartel {ganador}";
         soldierCount = 3;
-        // ↓ en vez de reiniciar, sumamos la diferencia
+
         int diff = Mathf.Abs(presionJugador - presionEnemigo);
         generationRate += diff;
-        Debug.Log("Presion:" + diff);
         maxSoldiers = 5;
         generationTimer = 0f;
         esFuerteNeutral = false;
         fueFuerteNeutral = true;
 
         UpdateLabel();
+
         foreach (var celda in occupiedCells)
             celda.ApplyDebugColor();
 
         Debug.Log($"✅ Disputa resuelta: fuerte conquistado por jugador {ganador} (+{diff} generations)");
     }
+
 
 
 }

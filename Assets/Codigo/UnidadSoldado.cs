@@ -55,10 +55,19 @@ public class UnidadSoldado : MonoBehaviour
 
             if (cell != null && !cell.isWalkable)
             {
-                Debug.Log($"☠️ Soldado33 murió en obstáculo en {gridPos}");
-                Destroy(gameObject);
-                yield break;
+                if (cell.building is HeadquartersBuilding hq && hq == origenHQ)
+                {
+                    // Permitido: es su propio HQ
+                }
+                else
+                {
+                    Debug.Log($"☠️ Soldado murió en obstáculo en {gridPos}");
+                    Destroy(gameObject);
+                    yield break;
+                }
             }
+
+
 
             yield return null;
         }

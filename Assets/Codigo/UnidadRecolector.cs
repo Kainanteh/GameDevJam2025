@@ -99,10 +99,18 @@ public class UnidadRecolector : MonoBehaviour
 
             if (cell != null && !cell.isWalkable)
             {
-                Debug.Log($"☠️ Recolector murió en obstáculo en {gridPos}");
-                Destroy(gameObject);
-                yield break;
+                if (cell.building is HeadquartersBuilding hq && hq == origenHQ)
+                {
+                    // Permitido: su propio HQ
+                }
+                else
+                {
+                    Debug.Log($"☠️ Recolector murió en obstáculo en {gridPos}");
+                    Destroy(gameObject);
+                    yield break;
+                }
             }
+
 
             yield return null;
         }

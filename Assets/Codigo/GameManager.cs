@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System.Collections;
+using UnityEngine.SceneManagement;
 
 public enum TipoCamino
 {
@@ -51,6 +53,8 @@ public class GameManager : MonoBehaviour
     public Color neutralFuerteColor = Color.gray;
     public Color disputaFuerteColor = new Color(0.6f, 0f, 0.8f); // púrpura
 
+    public GameObject uiResultadoPanel;
+    public TextMeshProUGUI uiResultadoTexto;
 
 
     // GameManager.cs
@@ -85,7 +89,7 @@ public class GameManager : MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+        //DontDestroyOnLoad(gameObject);
     }
 
     void Start()
@@ -448,102 +452,337 @@ public class GameManager : MonoBehaviour
         selectedCells.Clear();
     }
 
+
+
     public void PlaceTestBuilding()
     {
-        HeadquartersBuilding playerHQ = new HeadquartersBuilding("Cuartel Azul", 0);
-        Vector2Int[] playerPositions = new Vector2Int[]
-        {
-        new Vector2Int(1, 1), new Vector2Int(1, 2),
-        new Vector2Int(2, 1), new Vector2Int(2, 2)
-        };
+        string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
-        foreach (var pos in playerPositions)
+        if (sceneName == "Pantalla1")
         {
-            CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
-            if (cell != null)
+            HeadquartersBuilding playerHQ = new HeadquartersBuilding("Cuartel Azul", 0);
+            Vector2Int[] playerPositions = new Vector2Int[]
             {
-                cell.building = playerHQ;
-                cell.isWalkable = false;
-                cell.hasResource = false;
-                playerHQ.occupiedCells.Add(cell);
+            new Vector2Int(1, 1), new Vector2Int(1, 2),
+            new Vector2Int(2, 1), new Vector2Int(2, 2)
+            };
+
+            foreach (var pos in playerPositions)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.building = playerHQ;
+                    cell.isWalkable = false;
+                    cell.hasResource = false;
+                    playerHQ.occupiedCells.Add(cell);
+                }
+            }
+
+            playerHQ.FinalizeSetup();
+            foreach (var cell in playerHQ.occupiedCells)
+                cell.ApplyDebugColor();
+
+            HeadquartersBuilding enemyHQ = new HeadquartersBuilding("Cuartel Rojo", 1);
+            int maxX = gridGenerator.width - 1;
+            int maxY = gridGenerator.height - 1;
+
+            Vector2Int[] enemyPositions = new Vector2Int[]
+            {
+            new Vector2Int(maxX - 2, maxY - 2), new Vector2Int(maxX - 2, maxY - 1),
+            new Vector2Int(maxX - 1, maxY - 2), new Vector2Int(maxX - 1, maxY - 1)
+            };
+
+            foreach (var pos in enemyPositions)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.building = enemyHQ;
+                    cell.isWalkable = false;
+                    cell.hasResource = false;
+                    enemyHQ.occupiedCells.Add(cell);
+                }
+            }
+
+            enemyHQ.FinalizeSetup();
+            foreach (var cell in enemyHQ.occupiedCells)
+                cell.ApplyDebugColor();
+
+            CellData celdaComida = gridGenerator.GetCellAt(1, 7);
+            if (celdaComida != null)
+            {
+                celdaComida.hasResource = true;
+                celdaComida.resourceType = "Comida";
+                celdaComida.resourceAmount = 1;
+                celdaComida.ApplyDebugColor();
+            }
+
+            Vector2Int[] obstaculos = new Vector2Int[]
+            {
+            new Vector2Int(4, 4), new Vector2Int(4, 5),
+            new Vector2Int(5, 4), new Vector2Int(5, 5)
+            };
+
+            foreach (var pos in obstaculos)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.isWalkable = false;
+                    cell.ApplyDebugColor();
+                }
+            }
+
+            HeadquartersBuilding fuerteNeutral = new HeadquartersBuilding("Fuerte Neutral", 10, true);
+            CellData celdaFuerte = gridGenerator.GetCellAt(8, 1);
+            if (celdaFuerte != null)
+            {
+                celdaFuerte.building = fuerteNeutral;
+                celdaFuerte.isWalkable = false;
+                celdaFuerte.hasResource = false;
+                fuerteNeutral.occupiedCells.Add(celdaFuerte);
+            }
+
+            fuerteNeutral.soldierCount = 5;
+            fuerteNeutral.FinalizeSetup();
+            foreach (var cell in fuerteNeutral.occupiedCells)
+                cell.ApplyDebugColor();
+        }
+        else if (sceneName == "Pantalla2")
+        {
+            // Línea infranqueable en x = 5, excepto (5,5) y (5,6)
+            for (int y = 0; y < gridGenerator.height; y++)
+            {
+                if (y == 5 || y == 6) continue; // dejar (5,5) y (5,6) libres
+                CellData cell = gridGenerator.GetCellAt(5, y);
+                if (cell != null)
+                {
+                    cell.isWalkable = false;
+                    cell.ApplyDebugColor();
+                }
+            }
+
+            // HQ jugador (2x2) en (1,4), (1,5), (2,4), (2,5)
+            HeadquartersBuilding playerHQ = new HeadquartersBuilding("Cuartel Azul", 0);
+            Vector2Int[] playerHQPos = new Vector2Int[]
+            {
+        new Vector2Int(1, 4), new Vector2Int(1, 5),
+        new Vector2Int(2, 4), new Vector2Int(2, 5)
+            };
+            foreach (var pos in playerHQPos)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.building = playerHQ;
+                    cell.isWalkable = false;
+                    playerHQ.occupiedCells.Add(cell);
+                }
+            }
+            playerHQ.FinalizeSetup();
+            foreach (var cell in playerHQ.occupiedCells)
+                cell.ApplyDebugColor();
+
+            // Recursos jugador en (1,1) y (1,8)
+            Vector2Int[] playerRecursos = new Vector2Int[]
+            {
+        new Vector2Int(1, 1), new Vector2Int(1, 8)
+            };
+            foreach (var pos in playerRecursos)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.hasResource = true;
+                    cell.resourceType = "Comida";
+                    cell.resourceAmount = 1;
+                    cell.ApplyDebugColor();
+                }
+            }
+
+            // HQ enemigo (2x2) en (7,4), (7,5), (8,4), (8,5)
+            HeadquartersBuilding enemyHQ = new HeadquartersBuilding("Cuartel Rojo", 1);
+            Vector2Int[] enemyHQPos = new Vector2Int[]
+            {
+        new Vector2Int(7, 4), new Vector2Int(7, 5),
+        new Vector2Int(8, 4), new Vector2Int(8, 5)
+            };
+            foreach (var pos in enemyHQPos)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.building = enemyHQ;
+                    cell.isWalkable = false;
+                    enemyHQ.occupiedCells.Add(cell);
+                }
+            }
+            enemyHQ.FinalizeSetup();
+            foreach (var cell in enemyHQ.occupiedCells)
+                cell.ApplyDebugColor();
+
+            // Recursos enemigo en (8,1) y (8,8)
+            Vector2Int[] enemyRecursos = new Vector2Int[]
+            {
+        new Vector2Int(8, 1), new Vector2Int(8, 8)
+            };
+            foreach (var pos in enemyRecursos)
+            {
+                CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                if (cell != null)
+                {
+                    cell.hasResource = true;
+                    cell.resourceType = "Comida";
+                    cell.resourceAmount = 1;
+                    cell.ApplyDebugColor();
+                }
             }
         }
-
-        playerHQ.FinalizeSetup();
-
-        foreach (var cell in playerHQ.occupiedCells)
-            cell.ApplyDebugColor(); // ✅ pinta HQ jugador
-
-        HeadquartersBuilding enemyHQ = new HeadquartersBuilding("Cuartel Rojo", 1);
-        int maxX = gridGenerator.width - 1;
-        int maxY = gridGenerator.height - 1;
-
-        Vector2Int[] enemyPositions = new Vector2Int[]
+        else if (sceneName == "Pantalla3")
         {
-        new Vector2Int(maxX - 2, maxY - 2), new Vector2Int(maxX - 2, maxY - 1),
-        new Vector2Int(maxX - 1, maxY - 2), new Vector2Int(maxX - 1, maxY - 1)
-        };
-
-        foreach (var pos in enemyPositions)
-        {
-            CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
-            if (cell != null)
+            // === JUGADOR (abajo centro) ===
+            HeadquartersBuilding jugadorHQ = new HeadquartersBuilding("Cuartel Azul", 0);
+            Vector2Int[] jugadorPos = new Vector2Int[]
             {
-                cell.building = enemyHQ;
+        new Vector2Int(4, 1), new Vector2Int(4, 2),
+        new Vector2Int(5, 1), new Vector2Int(5, 2)
+            };
+            foreach (var pos in jugadorPos)
+            {
+                var cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                cell.building = jugadorHQ;
                 cell.isWalkable = false;
-                cell.hasResource = false;
-                enemyHQ.occupiedCells.Add(cell);
+                jugadorHQ.occupiedCells.Add(cell);
             }
-        }
+            jugadorHQ.FinalizeSetup();
+            foreach (var c in jugadorHQ.occupiedCells) c.ApplyDebugColor();
 
-        enemyHQ.FinalizeSetup();
+            // Fuerte del jugador (una celda más arriba → 4,5)
+            HeadquartersBuilding fuerteJugador = new HeadquartersBuilding("Fuerte Azul", 10, true);
+            CellData fj = gridGenerator.GetCellAt(4, 5);
+            fj.building = fuerteJugador;
+            fj.isWalkable = false;
+            fuerteJugador.occupiedCells.Add(fj);
+            fuerteJugador.soldierCount = 5;
+            fuerteJugador.FinalizeSetup();
+            fj.ApplyDebugColor();
 
-        foreach (var cell in enemyHQ.occupiedCells)
-            cell.ApplyDebugColor(); // ✅ pinta HQ enemigo
-
-        CellData celdaComida = gridGenerator.GetCellAt(1, 7);
-        if (celdaComida != null)
-        {
-            celdaComida.hasResource = true;
-            celdaComida.resourceType = "Comida";
-            celdaComida.resourceAmount = 1;
-            celdaComida.ApplyDebugColor();
-        }
-
-        Vector2Int[] obstaculos = new Vector2Int[]
-        {
-        new Vector2Int(4, 4), new Vector2Int(4, 5),
-        new Vector2Int(5, 4), new Vector2Int(5, 5)
-        };
-
-        foreach (var pos in obstaculos)
-        {
-            CellData cell = gridGenerator.GetCellAt(pos.x, pos.y);
-            if (cell != null)
+            // Recursos jugador (2 celdas a izquierda y derecha del HQ)
+            Vector2Int[] recursosJugador = new Vector2Int[] { new Vector2Int(2, 1), new Vector2Int(7, 1) };
+            foreach (var pos in recursosJugador)
             {
-                cell.isWalkable = false;
+                var cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                cell.hasResource = true;
+                cell.resourceType = "Comida";
+                cell.resourceAmount = 1;
                 cell.ApplyDebugColor();
             }
+
+            // === ENEMIGO 1 (arriba izquierda, subido 1 celda) ===
+            HeadquartersBuilding enemigo1HQ = new HeadquartersBuilding("Cuartel Rojo", 1);
+            Vector2Int[] enemigo1Pos = new Vector2Int[]
+            {
+        new Vector2Int(1, 7), new Vector2Int(1, 8),
+        new Vector2Int(2, 7), new Vector2Int(2, 8)
+            };
+            foreach (var pos in enemigo1Pos)
+            {
+                var cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                cell.building = enemigo1HQ;
+                cell.isWalkable = false;
+                enemigo1HQ.occupiedCells.Add(cell);
+            }
+            enemigo1HQ.FinalizeSetup();
+            foreach (var c in enemigo1HQ.occupiedCells) c.ApplyDebugColor();
+
+            // Fuerte enemigo1 (una celda más abajo → 1,4)
+            HeadquartersBuilding fuerte1 = new HeadquartersBuilding("Fuerte Rojo", 10, true);
+            CellData f1 = gridGenerator.GetCellAt(1, 4);
+            f1.building = fuerte1;
+            f1.isWalkable = false;
+            fuerte1.occupiedCells.Add(f1);
+            fuerte1.soldierCount = 5;
+            fuerte1.FinalizeSetup();
+            f1.ApplyDebugColor();
+
+            // Recurso enemigo1 (a la derecha, +1 distancia = 4,9)
+            CellData r1 = gridGenerator.GetCellAt(4, 9);
+            r1.hasResource = true;
+            r1.resourceType = "Comida";
+            r1.resourceAmount = 1;
+            r1.ApplyDebugColor();
+
+            // === ENEMIGO 2 (arriba derecha, subido 1 celda) ===
+            HeadquartersBuilding enemigo2HQ = new HeadquartersBuilding("Cuartel Magenta", 2);
+            Vector2Int[] enemigo2Pos = new Vector2Int[]
+            {
+        new Vector2Int(7, 7), new Vector2Int(7, 8),
+        new Vector2Int(8, 7), new Vector2Int(8, 8)
+            };
+            foreach (var pos in enemigo2Pos)
+            {
+                var cell = gridGenerator.GetCellAt(pos.x, pos.y);
+                cell.building = enemigo2HQ;
+                cell.isWalkable = false;
+                enemigo2HQ.occupiedCells.Add(cell);
+            }
+            enemigo2HQ.FinalizeSetup();
+            foreach (var c in enemigo2HQ.occupiedCells) c.ApplyDebugColor();
+
+            // Fuerte enemigo2 (una celda más abajo → 8,4)
+            HeadquartersBuilding fuerte2 = new HeadquartersBuilding("Fuerte Magenta", 10, true);
+            CellData f2 = gridGenerator.GetCellAt(8, 4);
+            f2.building = fuerte2;
+            f2.isWalkable = false;
+            fuerte2.occupiedCells.Add(f2);
+            fuerte2.soldierCount = 5;
+            fuerte2.FinalizeSetup();
+            f2.ApplyDebugColor();
+
+            // Recurso enemigo2 (a la izquierda, +1 distancia = 5,9)
+            CellData r2 = gridGenerator.GetCellAt(5, 9);
+            r2.hasResource = true;
+            r2.resourceType = "Comida";
+            r2.resourceAmount = 1;
+            r2.ApplyDebugColor();
         }
 
-        // FuerteNeutral
-        HeadquartersBuilding fuerteNeutral = new HeadquartersBuilding("Fuerte Neutral", 10, true);
-        CellData celdaFuerte = gridGenerator.GetCellAt(8, 1);
-        if (celdaFuerte != null)
-        {
-            celdaFuerte.building = fuerteNeutral;
-            celdaFuerte.isWalkable = false;
-            celdaFuerte.hasResource = false;
-            fuerteNeutral.occupiedCells.Add(celdaFuerte);
-        }
 
-        fuerteNeutral.soldierCount = 5;
-        fuerteNeutral.FinalizeSetup();
 
-        foreach (var cell in fuerteNeutral.occupiedCells)
-            cell.ApplyDebugColor(); // ✅ pinta fuerte neutral
+
     }
 
+    public void MostrarMensajeResultado(string texto)
+    {
+        if (uiResultadoPanel != null && uiResultadoTexto != null)
+        {
+            uiResultadoPanel.SetActive(true);
+            uiResultadoTexto.text = texto;
+        }
+    }
 
+    public void IniciarTransicionEscena(string nombreEscena, float delay)
+    {
+        StartCoroutine(TransicionEscena(nombreEscena, delay));
+    }
+
+    private IEnumerator TransicionEscena(string nombreEscena, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        SceneManager.LoadScene(nombreEscena);
+    }
+
+    public void IrASiguientePantalla(float delay)
+    {
+        string actual = SceneManager.GetActiveScene().name;
+        string siguiente = "";
+
+        if (actual == "Pantalla1") siguiente = "Pantalla2";
+        else if (actual == "Pantalla2") siguiente = "Pantalla3";
+        else return;
+
+        IniciarTransicionEscena(siguiente, delay);
+    }
 
 }

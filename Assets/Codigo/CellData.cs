@@ -166,9 +166,10 @@ public class CellData : MonoBehaviour
         }
         else
         {
-            baseColor = Color.Lerp(GameManager.Instance.walkableCellBorderColor, Color.black, GameManager.Instance.baseColorIntensity);
+            baseColor = new Color(0.4f, 0.6f, 0.3f); // ejemplo de verde neutro
             activarHierba = true;
         }
+
 
         baseColor.a = 1f;
 
