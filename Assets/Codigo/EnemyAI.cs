@@ -32,8 +32,19 @@ public class EnemyAI : MonoBehaviour
     bool ataque2Fuerte3 = false;
     bool ataque2HQEnemigo = false;
 
-    void Start()
+    IEnumerator Start()
     {
+        // Esperar a que GameManager esté listo
+        while (GameManager.Instance == null || GameManager.Instance.gridGenerator == null)
+            yield return null;
+
+        // Esperar a que el grid esté generado completamente
+        while (GameManager.Instance.gridGenerator.allCells.Count < 50)
+            yield return null;
+
+        // Esperar 1 frame adicional por seguridad
+        yield return null;
+
         string sceneName = SceneManager.GetActiveScene().name;
 
         if (sceneName == "Pantalla1")
@@ -42,8 +53,8 @@ public class EnemyAI : MonoBehaviour
             StartCoroutine(IA_Pantalla2());
         if (sceneName == "Pantalla3")
             StartCoroutine(IA_Pantalla3());
-
     }
+
 
     IEnumerator<WaitForSeconds> IA_Pantalla1()
     {
@@ -150,13 +161,29 @@ public class EnemyAI : MonoBehaviour
 
         if (enemyHQ == null || playerHQ == null || recursoArriba == null || recursoAbajo == null)
         {
-            Debug.LogWarning("❌ Faltan elementos clave para IA en Pantalla2");
-            yield break;
+            if (enemyHQ == null)
+                Debug.LogWarning("❌ enemyHQ es null");
+
+            if (playerHQ == null)
+                Debug.LogWarning("❌ playerHQ es null");
+
+            if (recursoArriba == null)
+                Debug.LogWarning("❌ recursoArriba es null");
+
+            if (recursoAbajo == null)
+                Debug.LogWarning("❌ recursoAbajo es null");
+
+            if (enemyHQ == null || playerHQ == null || recursoArriba == null || recursoAbajo == null)
+            {
+                Debug.LogWarning("❌ Faltan elementos clave para IA en Pantalla2");
+                yield break;
+            }
+
         }
 
         HashSet<Vector2Int> usadas = new();
 
-        yield return new WaitForSeconds(10f);
+        yield return new WaitForSeconds(5f);
         Vector3 desde1 = GetCeldaAdyacenteLibre(enemyHQ, usadas);
         usadas.Add(Vector2Int.RoundToInt(desde1));
         LanzarRecolectorPantalla2(recursoArriba);

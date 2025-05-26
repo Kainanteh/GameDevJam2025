@@ -53,15 +53,24 @@ public class UnidadExplorador : MonoBehaviour
 
             if (cell != null && !cell.isWalkable)
             {
-                if (cell.building != null && cell.building.isHeadquarters && cell.building.ownerId != origen.ownerId)
+                if (cell.building != null && cell.building.isHeadquarters)
                 {
-                    HeadquartersBuilding hqEnemigo = (HeadquartersBuilding)cell.building;
-                    hqEnemigo.RecibirDaño(coste);
-                    Debug.Log($"💥 Explorador impacta HQ enemigo en celda {cell.coordinates} y causa {coste} de daño");
+                    if (cell.building.ownerId != origen.ownerId)
+                    {
+                        HeadquartersBuilding hqEnemigo = (HeadquartersBuilding)cell.building;
+                        hqEnemigo.RecibirDaño(coste);
+                        Debug.Log($"💥 Explorador impacta HQ enemigo en celda {cell.coordinates} y causa {coste} de daño");
+                        Destroy(gameObject);
+                        return;
+                    }
+                    // Si es su propio HQ, no muere
                 }
-
-                Destroy(gameObject);
-                return;
+                else
+                {
+                    Debug.Log($"☠️ Explorador murió en obstáculo en celda {cell.coordinates}");
+                    Destroy(gameObject);
+                    return;
+                }
             }
 
             if (t >= 1f && !enTransicionARecolector)

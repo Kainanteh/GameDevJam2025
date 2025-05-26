@@ -514,7 +514,7 @@ public class GameManager : MonoBehaviour
             {
                 celdaComida.hasResource = true;
                 celdaComida.resourceType = "Comida";
-                celdaComida.resourceAmount = 1;
+                celdaComida.resourceAmount = 2;
                 celdaComida.ApplyDebugColor();
             }
 

@@ -14,7 +14,7 @@ public class HeadquartersBuilding : Building
     private Dictionary<(Vector3 origen, Vector3 destino), float> ataqueTimers = new();
     private bool fueFuerteNeutral = false;
 
-    private TextMeshPro debugLabel;
+    private TextMeshProUGUI debugLabel;
     private bool esFuerteNeutral = false;
 
     public HeadquartersBuilding(string name, int ownerId, bool esFuerteNeutral = false)
@@ -22,15 +22,23 @@ public class HeadquartersBuilding : Building
     {
         this.ownerId = ownerId;
         this.esFuerteNeutral = esFuerteNeutral;
+
         if (esFuerteNeutral)
         {
             generationRate = 0;
             maxSoldiers = 5;
             generationInterval = 2f;
-            this.fueFuerteNeutral = esFuerteNeutral;
-
+            this.fueFuerteNeutral = true;
         }
+        
+        if (ownerId == 0) // 🧑 jugador
+        {
+            maxSoldiers = 10;
+           
+        }
+    
     }
+
 
     public void Tick(float deltaTime)
     {
@@ -183,7 +191,8 @@ public class HeadquartersBuilding : Building
 
     private void LaunchRecolector(Vector3 origen, CellData celdaRecurso, List<Vector3> camino, CaminoActivo caminoActivo)
     {
-        if (soldierCount <= 1)
+        if (soldierCount <= 1 && ownerId == 0)
+
         {
             Debug.Log($"⚠️ HQ {buildingName} no lanza recolector: solo queda 1 soldado");
             return;
@@ -199,14 +208,22 @@ public class HeadquartersBuilding : Building
 
     private void LaunchSoldado(Vector3 origen, List<Vector3> camino, Building objetivo, int daño, CaminoActivo caminoActivo)
     {
+
+        if (soldierCount <= 1 && ownerId == 0)
+        {
+            Debug.Log($"⛔ HQ jugador no lanza soldado: se quedaría a 0.");
+            return;
+        }
+
+
         GameObject unidad = Object.Instantiate(GameManager.Instance.unidadPrefab, origen, Quaternion.identity);
         unidad.name = "Soldado";
         unidad.AddComponent<UnidadSoldado>().Init(this, camino, objetivo, daño, caminoActivo);
     }
 
-    public void OnRecolectorSuccess()
+    public void OnRecolectorSuccess(int recursoamount)
     {
-        generationRate += 1;
+        generationRate += recursoamount;
     }
 
     public void UpdateLabel()
@@ -227,16 +244,16 @@ public class HeadquartersBuilding : Building
 
         Vector3 center = GetCenter();
 
-        /*GameObject labelGO = new GameObject($"{buildingName}_Label");
-        labelGO.transform.position = new Vector3(center.x, center.y, -0.2f);
+        GameObject labelGO = GameObject.Instantiate(Resources.Load<GameObject>("circle_black"));
+        labelGO.transform.position = new Vector3(center.x, center.y + 1.5f, -0.2f);
 
-        var text = labelGO.AddComponent<TextMeshPro>();
-        text.text = $"<b>{soldierCount}</b>";
-        text.fontSize = 4;
-        text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black;
+        debugLabel = labelGO.GetComponentInChildren<TextMeshProUGUI>();
 
-        debugLabel = text;*/
+        debugLabel.text = $"<b>{soldierCount}</b>";
+
+
+
+        //debugLabel = text;
     }
 
     private Vector3 GetCenter()
@@ -258,10 +275,10 @@ public class HeadquartersBuilding : Building
         {
             generationRate = 0;
 
-            if (ownerId == 0)
+            if (ownerId == 0 && !fueFuerteNeutral)
             {
                 Debug.Log("❌ El jugador ha perdido su cuartel principal.");
-                GameManager.Instance.MostrarMensajeResultado("DERROTA");
+                GameManager.Instance.MostrarMensajeResultado("DEFEAT");
                 GameManager.Instance.IniciarTransicionEscena("Menu", 3f);
             }
             else if (ownerId > 0 && ownerId < 10)
@@ -283,7 +300,7 @@ public class HeadquartersBuilding : Building
 
                 if (!quedanEnemigos)
                 {
-                    GameManager.Instance.MostrarMensajeResultado("VICTORIA");
+                    GameManager.Instance.MostrarMensajeResultado("VICTORY");
 
                     string actual = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                     if (actual == "Pantalla3")

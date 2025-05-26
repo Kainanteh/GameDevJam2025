@@ -70,7 +70,7 @@ public class UnidadRecolector : MonoBehaviour
             if (!yaSumado)
             {
                 yaSumado = true;
-                origenHQ.OnRecolectorSuccess();
+                origenHQ.OnRecolectorSuccess(celdaRecurso.resourceAmount);
             }
 
             yield return new WaitForSeconds(1f);

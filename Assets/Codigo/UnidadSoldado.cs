@@ -125,11 +125,19 @@ public class UnidadSoldado : MonoBehaviour
             Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
             var cell = GameManager.Instance.gridGenerator.GetCellAt(gridPos.x, gridPos.y);
 
+
             if (cell != null && !cell.isWalkable)
             {
-                Debug.Log($"☠️ Soldado murió en obstáculo en {gridPos}");
-                Destroy(gameObject);
-                yield break;
+                if (cell.building is HeadquartersBuilding hq && hq == origenHQ)
+                {
+                    // Permitido: es su propio HQ
+                }
+                else
+                {
+                    Debug.Log($"☠️ Soldado murió en obstáculo en {gridPos}");
+                    Destroy(gameObject);
+                    yield break;
+                }
             }
 
             yield return null;
